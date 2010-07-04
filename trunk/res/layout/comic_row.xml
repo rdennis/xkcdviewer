@@ -22,17 +22,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/layout1"
     android:layout_width="fill_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:padding="10dp">
   <TextView android:id="@+id/rownumber"
       android:text="@+id/rownumber"
       android:layout_width="wrap_content"
-      android:layout_height="wrap_content"/>
+      android:layout_height="wrap_content"
+      android:textSize="16sp"/>
   <TextView android:id="@+id/seperator"
       android:text="@string/seperator"
       android:layout_width="wrap_content"
-      android:layout_height="wrap_content"/>
+      android:layout_height="wrap_content"
+      android:textSize="16sp"/>
   <TextView android:id="@+id/rowtitle"
       android:text="@+id/rowtitle"
       android:layout_width="wrap_content"
-      android:layout_height="wrap_content"/>
+      android:layout_height="wrap_content"
+      android:textSize="16sp"/>
 </LinearLayout>
