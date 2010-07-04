@@ -22,15 +22,15 @@ import android.app.Activity;
 import android.os.Bundle;
 
 public class ComicViewer extends Activity {
-	
-	private ComicDbAdapter mDbHelper;
-	
-	/** Called when the activity is first created. */
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.comic_view);
-        mDbHelper= new ComicDbAdapter(this);
-        mDbHelper.open();
-    }
+
+  private ComicDbAdapter mDbHelper;
+
+  /** Called when the activity is first created. */
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.comic_view);
+    mDbHelper= new ComicDbAdapter(this);
+    mDbHelper.open();
+  }
 }

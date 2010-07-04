@@ -18,24 +18,91 @@
  */
 package com.rada.xkcd;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+
 import android.app.Service;
 import android.content.Intent;
+import android.os.Bundle;
 import android.os.IBinder;
 
 public class ComicDownloader extends Service {
-	
-	private ComicDbAdapter mDbHelper;
-	
-	/** Called when the activity is first created. */
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        mDbHelper= new ComicDbAdapter(this);
-        mDbHelper.open();
-    }
 
-	@Override
-	public IBinder onBind(Intent intent) {
-		return null;
-	}
+  public static final String ACTION= "action";
+  public static final int ACTION_DOWNLOAD= 0;
+  public static final int ACTION_DELETE= 1;
+  
+  private ComicDbAdapter mDbHelper;
+  private Downloader mDownloader;
+
+  /** Called when the activity is first created. */
+  @Override
+  public void onCreate() {
+    super.onCreate();
+    mDbHelper= new ComicDbAdapter(this);
+    mDbHelper.open();
+  }
+
+  @Override
+  public int onStartCommand(Intent intent, int flags, int startId) {
+    boolean success;
+    Bundle extras= intent.getExtras();
+    if (!extras.containsKey(ComicDbAdapter.KEY_NUMBER))
+      if (extras.getInt(ACTION) == ACTION_DOWNLOAD)
+        success= mDownloader.downloadAll();
+      else
+        success= mDownloader.deleteAll();
+    else
+      if (extras.getInt(ACTION) == ACTION_DOWNLOAD)
+        success= mDownloader.download(extras.getLong(ComicDbAdapter.KEY_NUMBER));
+      else
+        success= mDownloader.delete(extras.getLong(ComicDbAdapter.KEY_NUMBER));
+    if (!success)
+      //TODO print failure message
+      ;
+    return START_NOT_STICKY;
+  }
+  
+  public class Downloader {
+    
+    public boolean download(long number) {
+      String url= "http://www.xkcd.com/" + number + "/index.html";
+      URL fileUrl= null;
+      try {
+        fileUrl= new URL(url);
+      } catch (MalformedURLException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+      try {
+        HttpURLConnection conn= (HttpURLConnection) fileUrl.openConnection();
+        conn.setDoInput(true);
+        conn.connect();
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+      return true;
+    }
+    
+    public boolean delete(long number) {
+      return true;
+    }
+    
+    public boolean downloadAll() {
+      return true;
+    }
+    
+    public boolean deleteAll() {
+      return true;
+    }
+  }
+
+  @Override
+  public IBinder onBind(Intent intent) {
+    // TODO Auto-generated method stub
+    return null;
+  }
 }
