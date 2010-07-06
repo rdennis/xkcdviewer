@@ -242,7 +242,7 @@ public class ComicDbAdapter {
    * @return the number of comics updated
    * @throws MalformedURLException a terrible error occurred, the archive URL is messed up
    */
-  public long updateList(Context ctx) throws MalformedURLException {
+  public long updateList() throws MalformedURLException {
     Cursor c= fetchMostRecentComic();
     long mostRecent= (c == null) ? 0 : c.getLong(c.getColumnIndexOrThrow(KEY_NUMBER));
     if (c != null)
@@ -281,13 +281,12 @@ public class ComicDbAdapter {
           }
         }
       }
-      toast= Toast.makeText(ctx, R.string.list_update_success, Toast.LENGTH_SHORT);
+      toast= Toast.makeText(mCtx, R.string.list_update_success, Toast.LENGTH_SHORT);
     } catch (IOException e) {
       //e.printStackTrace();
-      toast= Toast.makeText(ctx, R.string.list_update_failure, Toast.LENGTH_SHORT);
+      toast= Toast.makeText(mCtx, R.string.list_update_failure, Toast.LENGTH_SHORT);
     }
-    
-    toast.setDuration(Toast.LENGTH_SHORT);
+
     toast.show();
     
     return count;

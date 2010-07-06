@@ -62,10 +62,9 @@ public class ComicSelector extends ListActivity {
     ProgressDialog dialog= ProgressDialog.show(this, null,
                                                getResources().getString(R.string.list_updating),
                                                true, true);
-    //Threader t= new Threader(this);
-    //t.start();
+//    new Thread(new Threader(this)).start();
     try {
-      mDbHelper.updateList(this);
+      mDbHelper.updateList();
     } catch (MalformedURLException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
@@ -73,17 +72,18 @@ public class ComicSelector extends ListActivity {
     populateList();
   }
   
-  private class Threader extends Thread {
-    Context mCtx;
+  private class Threader implements Runnable {
+    ComicDbAdapter mDbAdapter;
     
     Threader(Context ctx) {
-      this.mCtx= ctx;
+      mDbAdapter= new ComicDbAdapter(ctx);
+      mDbAdapter.open();
     }
-    
+
     public void run() {
-      ComicDbAdapter mDbHelper= new ComicDbAdapter(mCtx);
+      // TODO Auto-generated method stub
       try {
-        mDbHelper.updateList(mCtx);
+        mDbAdapter.updateList();
       } catch (MalformedURLException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
