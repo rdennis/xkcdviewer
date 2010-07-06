@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     <string name="hello">Hello World, ComicSelector!</string>
     <string name="app_name">xkcd</string>
     <string name="no_comics">No comics have been downloaded</string>
-    <string name="seperator">. </string>
+    <string name="seperator">.  </string>
     <string name="previous"> &lt; </string>
     <string name="next"> &gt; </string>
     <string name="go">Go</string>
@@ -42,4 +42,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     <string name="menu_favorite">Favorite</string>
     <string name="menu_markunfavorite">Unmark as Favorite</string>
     <string name="menu_unfavorite">Unfavorite</string>
+    <string name="list_update_success">Successfully updated comic list</string>
+    <string name="list_update_failure">Failed to update comic list</string>
+    <string name="list_updating">Updating comic list...</string>
+    <string name="url_error_msg">Fatal error... Please tell the developer you got a MalformedURLException.</string>
 </resources>
