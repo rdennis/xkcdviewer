@@ -18,21 +18,35 @@
  */
 package com.rada.xkcd;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.text.Html;
 import android.util.Log;
+import android.widget.Toast;
 
 public class ComicDbAdapter {
 
   public static final String KEY_NUMBER= "_id";
   public static final String KEY_TITLE= "title";
-  public static final String KEY_TEXT= "text";
+  public static final String KEY_TEXT= "hover";
   public static final String KEY_URL= "url";
   public static final String KEY_FAVORITE= "favorite";
+  
+  private static final String ARCHIVE_URL= "http://www.xkcd.com/archive/index.html";
 
   private DatabaseHelper mDbHelper;
   private SQLiteDatabase mDb;
@@ -44,12 +58,12 @@ public class ComicDbAdapter {
   private static final int DATABASE_VERSION= 2;
 
   private static final String DATABASE_CREATE= 
-    "create table" + DATABASE_TABLE + "(" + 
-    KEY_NUMBER + " integer primary key," + 
-    KEY_TITLE + " text not null," +
-    KEY_TEXT + "text," +
-    KEY_URL + "text" + 
-    KEY_FAVORITE + "boolean);";
+    "create table " + DATABASE_TABLE + " ( " + 
+    KEY_NUMBER + " integer primary key, " + 
+    KEY_TITLE + " text not null, " +
+    KEY_TEXT + " text, " +
+    KEY_URL + " text, " +
+    KEY_FAVORITE + " boolean );";
 
   private final Context mCtx;
 
@@ -155,16 +169,20 @@ public class ComicDbAdapter {
    * @return Cursor to the most recent comic
    * @throws SQLException if the comic could not be found
    */
-  public Cursor fetchMostRecentComic() throws SQLException {
-    Cursor mCursor=
-      mDb.query(DATABASE_TABLE,
-                new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE },
-                "MAX(" + KEY_NUMBER + ")",
-                null, null, null, null);
-    if (mCursor != null)
-      mCursor.moveToFirst();
-
-    return mCursor;
+  public Cursor fetchMostRecentComic() {
+    try {
+      Cursor mCursor=
+        mDb.query(DATABASE_TABLE,
+                  new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE },
+                  "MAX(" + KEY_NUMBER + ")",
+                  null, null, null, null);
+      if (mCursor != null)
+        mCursor.moveToFirst();
+  
+      return mCursor;
+    } catch (SQLException e) {
+      return null;
+    }
   }
 
   /**
@@ -214,6 +232,65 @@ public class ComicDbAdapter {
     values.put(KEY_NUMBER, favorite);
 
     return mDb.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
+  }
+  
+  /**
+   * Update the list of comics by connecting to xkcd.com and display a toast message with
+   * the success status.
+   * 
+   * @param ctx the context within which to display a toast message
+   * @return the number of comics updated
+   * @throws MalformedURLException a terrible error occurred, the archive URL is messed up
+   */
+  public long updateList(Context ctx) throws MalformedURLException {
+    Cursor c= fetchMostRecentComic();
+    long mostRecent= (c == null) ? 0 : c.getLong(c.getColumnIndexOrThrow(KEY_NUMBER));
+    if (c != null)
+      c.close();
+    
+    long count= 0;
+
+    Toast toast;
+    URL url= new URL(ARCHIVE_URL);
+    try {
+      HttpURLConnection conn= (HttpURLConnection) url.openConnection();
+      conn.setDoInput(true);
+      BufferedInputStream bi= new BufferedInputStream(conn.getInputStream());
+      DataInputStream archive= new DataInputStream(bi);
+      //Scanner archive= new Scanner(bi);
+      String line, title;
+      long number;
+      Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
+              titlePattern= Pattern.compile("(?<=>).*?(?=<)");
+      Matcher m;
+      while (archive.available() > 0) {
+        line= archive.readLine();
+        if (line.startsWith("<a")) {
+          m= numberPattern.matcher(line);
+          number= (m.find()) ? Long.parseLong(m.group()) : 0;
+          if (number > mostRecent) {
+            m= titlePattern.matcher(line);
+            if (m.find()) {
+              title= Html.fromHtml(m.group()).toString();
+              ++count;
+              insertComic(number, title);
+              archive.readLine();
+              archive.readLine();
+              archive.readLine();
+            }
+          }
+        }
+      }
+      toast= Toast.makeText(ctx, R.string.list_update_success, Toast.LENGTH_SHORT);
+    } catch (IOException e) {
+      //e.printStackTrace();
+      toast= Toast.makeText(ctx, R.string.list_update_failure, Toast.LENGTH_SHORT);
+    }
+    
+    toast.setDuration(Toast.LENGTH_SHORT);
+    toast.show();
+    
+    return count;
   }
   
   /**

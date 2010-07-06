@@ -19,7 +19,11 @@
 package com.rada.xkcd;
 
 import java.io.File;
+import java.net.MalformedURLException;
+
 import android.app.ListActivity;
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
@@ -37,6 +41,8 @@ public class ComicSelector extends ListActivity {
 
   private ComicDbAdapter mDbHelper;
   private MenuInflater inflater;
+  
+  ProgressDialog updateDialog;
 
   /** Called when the activity is first created. */
   @Override
@@ -48,6 +54,41 @@ public class ComicSelector extends ListActivity {
     mDbHelper.open();
     populateList();
     registerForContextMenu(getListView());
+  }
+  
+  @Override
+  public void onStart() {
+    super.onStart();
+    ProgressDialog dialog= ProgressDialog.show(this, null,
+                                               getResources().getString(R.string.list_updating),
+                                               true, true);
+    //Threader t= new Threader(this);
+    //t.start();
+    try {
+      mDbHelper.updateList(this);
+    } catch (MalformedURLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    populateList();
+  }
+  
+  private class Threader extends Thread {
+    Context mCtx;
+    
+    Threader(Context ctx) {
+      this.mCtx= ctx;
+    }
+    
+    public void run() {
+      ComicDbAdapter mDbHelper= new ComicDbAdapter(mCtx);
+      try {
+        mDbHelper.updateList(mCtx);
+      } catch (MalformedURLException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
   }
 
   private void populateList() {
