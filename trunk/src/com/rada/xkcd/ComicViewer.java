@@ -19,11 +19,13 @@
 package com.rada.xkcd;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 
 public class ComicViewer extends Activity {
 
   private ComicDbAdapter mDbHelper;
+  private long number;
 
   /** Called when the activity is first created. */
   @Override
@@ -32,5 +34,10 @@ public class ComicViewer extends Activity {
     setContentView(R.layout.comic_view);
     mDbHelper= new ComicDbAdapter(this);
     mDbHelper.open();
+  }
+  
+  @Override
+  public void onStart() {
+    super.onStart();
   }
 }

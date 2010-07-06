@@ -18,13 +18,21 @@
  */
 package com.rada.xkcd;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.app.Service;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.IBinder;
 
@@ -80,6 +88,30 @@ public class ComicDownloader extends Service {
         HttpURLConnection conn= (HttpURLConnection) fileUrl.openConnection();
         conn.setDoInput(true);
         conn.connect();
+        BufferedInputStream bi= new BufferedInputStream(conn.getInputStream());
+        DataInputStream file= new DataInputStream(bi);
+        String line, picture= null, hoverText= null;
+        Pattern urlPattern= Pattern.compile("(?<=src=\").*?(?=\")");
+        Pattern textPattern= Pattern.compile("(?<=title=\").*?(?=\")");
+        Matcher m;
+        while (file.available() > 0 && !(line= file.readLine()).startsWith("<img")) {
+          m= urlPattern.matcher(line);
+          if (m.find())
+            picture= m.group();
+          m= textPattern.matcher(line);
+          if (m.find())
+            hoverText= m.group();
+          mDbHelper.updateComic(number, hoverText, picture);
+        }
+        Bitmap bitmap;
+        URL pictureUrl= new URL(picture);
+        conn.disconnect();
+        conn= (HttpURLConnection) pictureUrl.openConnection();
+        conn.setDoInput(true);
+        InputStream is= conn.getInputStream();
+        bitmap= BitmapFactory.decodeStream(is);
+        FileOutputStream out= new FileOutputStream("/sdcard/xkcd/" + number);
+        bitmap.compress(Bitmap.CompressFormat.PNG, 0, out);
       } catch (IOException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();

@@ -273,7 +273,7 @@ public class ComicDbAdapter {
             if (m.find()) {
               title= Html.fromHtml(m.group()).toString();
               ++count;
-              insertComic(number, title);
+//              insertComic(number, title);
               archive.readLine();
               archive.readLine();
               archive.readLine();
