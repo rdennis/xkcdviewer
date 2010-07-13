@@ -18,15 +18,11 @@
  */
 package com.rada.xkcd;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -34,9 +30,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.text.Html;
 import android.util.Log;
-import android.widget.Toast;
 
 public class ComicDbAdapter {
 
@@ -45,15 +39,14 @@ public class ComicDbAdapter {
   public static final String KEY_TEXT= "hover";
   public static final String KEY_URL= "url";
   public static final String KEY_FAVORITE= "favorite";
+  private static final String[] ALL_COLUMNS= new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE };
   
-  private static final String ARCHIVE_URL= "http://www.xkcd.com/archive/index.html";
-
   private DatabaseHelper mDbHelper;
   private SQLiteDatabase mDb;
 
   private static final String TAG= "ComicDbAdapter";
 
-  private static final String DATABASE_NAME= "data";
+  private static final String DATABASE_NAME= "comics.db";
   private static final String DATABASE_TABLE= "comics";
   private static final int DATABASE_VERSION= 2;
 
@@ -65,7 +58,7 @@ public class ComicDbAdapter {
     KEY_URL + " text, " +
     KEY_FAVORITE + " boolean );";
 
-  private final Context mCtx;
+  private final Context mContext;
 
   private static class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -90,10 +83,68 @@ public class ComicDbAdapter {
   /**
    * Constructor - setup up the local context
    * 
-   * @param ctx context within which to work
+   * @param context context within which to work
    */
-  public ComicDbAdapter(Context ctx) {
-    mCtx= ctx;
+  public ComicDbAdapter(Context context) {
+    mContext= context;
+    boolean exists= checkDatabase(DATABASE_NAME);
+    
+    if (!exists)
+      try {
+        copyDatabase(DATABASE_NAME);
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+  }
+  
+  /**
+   * Check if a given database exists in the applications database folder.
+   * 
+   * @param database the name of the database to check
+   * @return true if it already exists, false otherwise
+   */
+  private boolean checkDatabase(String database) {
+    File file= mContext.getDatabasePath(database).getAbsoluteFile();
+    return file.exists();
+  }
+  
+  /**
+   * Copy a database from the applications assets to its database folder.
+   * It preserves the same name across the copy.
+   * 
+   * @param database the name of the database to copy
+   * @throws IOException if it fails to create the directory, file, or in the copy
+   */
+  private void copyDatabase(String database) throws IOException {
+    
+    InputStream myInput = mContext.getAssets().open(database);
+
+    String path = mContext.getDatabasePath(database).getAbsolutePath();
+
+    File dir= new File(path.substring(0, path.lastIndexOf(File.separatorChar)));
+    File file= new File(path);
+    
+    if (!dir.exists())
+      dir.mkdirs();
+    
+    if (!file.exists())
+      file.createNewFile();
+
+    //Open the empty db as the output stream
+    OutputStream myOutput = new FileOutputStream(file);
+
+    //transfer bytes from the inputfile to the outputfile
+    byte[] buffer = new byte[1024];
+    int length;
+    while ((length = myInput.read(buffer))>0){
+      myOutput.write(buffer, 0, length);
+    }
+
+    //Close the streams
+    myOutput.flush();
+    myOutput.close();
+    myInput.close();
   }
 
   /**
@@ -103,7 +154,7 @@ public class ComicDbAdapter {
    * @throws SQLException if the opening/creation of the database fails
    */
   public ComicDbAdapter open() throws SQLException {
-    mDbHelper= new DatabaseHelper(mCtx);
+    mDbHelper= new DatabaseHelper(mContext);
     mDb= mDbHelper.getWritableDatabase();
     return this;
   }
@@ -138,7 +189,7 @@ public class ComicDbAdapter {
    */
   public Cursor fetchAllComics() {
     return mDb.query(DATABASE_TABLE,
-        new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE },
+        ALL_COLUMNS,
         null, null, null, null,
         KEY_NUMBER + " DESC");
   }
@@ -152,8 +203,7 @@ public class ComicDbAdapter {
    */
   public Cursor fetchComic(long number) throws SQLException {
     Cursor mCursor= 
-      mDb.query(true, DATABASE_TABLE, 
-                new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE },
+      mDb.query(true, DATABASE_TABLE, ALL_COLUMNS,
                 KEY_NUMBER + "=" + number,
                 null, null, null, null, null);
 
@@ -172,16 +222,15 @@ public class ComicDbAdapter {
   public Cursor fetchMostRecentComic() {
     try {
       Cursor mCursor=
-        mDb.query(DATABASE_TABLE,
-                  new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE },
-                  "MAX(" + KEY_NUMBER + ")",
-                  null, null, null, null);
+        mDb.query(true, DATABASE_TABLE, 
+                  new String[] { "MAX(" + KEY_NUMBER + ")", KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE },
+                  null, null, null, null, null, null);
       if (mCursor != null)
         mCursor.moveToFirst();
   
       return mCursor;
     } catch (SQLException e) {
-      return null;
+      throw e;
     }
   }
 
@@ -235,64 +284,6 @@ public class ComicDbAdapter {
   }
   
   /**
-   * Update the list of comics by connecting to xkcd.com and display a toast message with
-   * the success status.
-   * 
-   * @param ctx the context within which to display a toast message
-   * @return the number of comics updated
-   * @throws MalformedURLException a terrible error occurred, the archive URL is messed up
-   */
-  public long updateList() throws MalformedURLException {
-    Cursor c= fetchMostRecentComic();
-    long mostRecent= (c == null) ? 0 : c.getLong(c.getColumnIndexOrThrow(KEY_NUMBER));
-    if (c != null)
-      c.close();
-    
-    long count= 0;
-
-    Toast toast;
-    URL url= new URL(ARCHIVE_URL);
-    try {
-      HttpURLConnection conn= (HttpURLConnection) url.openConnection();
-      conn.setDoInput(true);
-      BufferedInputStream bi= new BufferedInputStream(conn.getInputStream());
-      DataInputStream archive= new DataInputStream(bi);
-      //Scanner archive= new Scanner(bi);
-      String line, title;
-      long number;
-      Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
-              titlePattern= Pattern.compile("(?<=>).*?(?=<)");
-      Matcher m;
-      while (archive.available() > 0) {
-        line= archive.readLine();
-        if (line.startsWith("<a")) {
-          m= numberPattern.matcher(line);
-          number= (m.find()) ? Long.parseLong(m.group()) : 0;
-          if (number > mostRecent) {
-            m= titlePattern.matcher(line);
-            if (m.find()) {
-              title= Html.fromHtml(m.group()).toString();
-              ++count;
-//              insertComic(number, title);
-              archive.readLine();
-              archive.readLine();
-              archive.readLine();
-            }
-          }
-        }
-      }
-      toast= Toast.makeText(mCtx, R.string.list_update_success, Toast.LENGTH_SHORT);
-    } catch (IOException e) {
-      //e.printStackTrace();
-      toast= Toast.makeText(mCtx, R.string.list_update_failure, Toast.LENGTH_SHORT);
-    }
-
-    toast.show();
-    
-    return count;
-  }
-  
-  /**
    * Return whether or not the given comic is a favorite.
    * 
    * @param number number of the comic to reference
@@ -300,8 +291,7 @@ public class ComicDbAdapter {
    */
   public boolean isFavorite(long number) {
     Cursor mCursor= 
-      mDb.query(true, DATABASE_TABLE, 
-                new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL },
+      mDb.query(true, DATABASE_TABLE, ALL_COLUMNS,
                 KEY_NUMBER + "=" + number,
                 null, null, null, null, null);
     boolean result= mCursor.getInt(mCursor.getColumnIndexOrThrow(KEY_FAVORITE)) != 0;

@@ -18,26 +18,43 @@
  */
 package com.rada.xkcd;
 
-import android.app.Activity;
+import android.app.ListActivity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
+import android.widget.SimpleCursorAdapter;
 
-public class ComicViewer extends Activity {
-
-  private ComicDbAdapter mDbHelper;
-  private long number;
-
+public class ComicList extends ListActivity {
+  
+  private ComicDbAdapter mDbAdapter;
+  
   /** Called when the activity is first created. */
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    setContentView(R.layout.comic_view);
-    mDbHelper= new ComicDbAdapter(this);
-    mDbHelper.open();
+    setContentView(R.layout.comic_list);
+    mDbAdapter= new ComicDbAdapter(this);
+    mDbAdapter.open();
+    Intent intent= new Intent(this, ComicManager.class);
+    intent.setAction("update");
+    startService(intent);
   }
   
   @Override
-  public void onStart() {
-    super.onStart();
+  public void onResume() {
+    super.onResume();
+    populateList();
+  }
+  
+  private void populateList() {
+    Cursor cursor= mDbAdapter.fetchAllComics();
+    startManagingCursor(cursor);
+    
+    String[] from= new String[] { ComicDbAdapter.KEY_NUMBER, ComicDbAdapter.KEY_TITLE };
+    int [] to= new int[] { R.id.row_number, R.id.row_title };
+    
+    SimpleCursorAdapter comics=
+      new SimpleCursorAdapter(this, R.layout.comic_row, cursor, from, to);
+    setListAdapter(comics);
   }
 }
