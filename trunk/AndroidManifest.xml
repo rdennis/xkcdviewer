@@ -23,26 +23,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     package="com.rada.xkcd"
     android:versionCode="1"
     android:versionName="1.0">
-
-  <application android:icon="@drawable/icon"
-      android:label="@string/app_name">
-    <activity android:name=".ComicSelector"
+  <application android:icon="@drawable/icon" android:label="@string/app_name">
+    <activity android:name=".ComicList"
         android:label="@string/app_name">
       <intent-filter>
-        <action android:name="android.intent.action.MAIN"/>
-        <category android:name="android.intent.category.LAUNCHER"/>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
 
-    <activity android:name=".ComicViewer"/>
-    <service android:name=".ComicDownloader"/>
-  </application>
+  <service android:name="ComicManager"/>
+</application>
 
 
-
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-  <uses-permission android:name="android.permission.INTERNET"/>
-  <uses-permission android:name="android.permission.VIBRATE"/>
-  <uses-permission android:name="android.permission.STATUS_BAR"/>
+<uses-permission android:name="android.permission.INTERNET"></uses-permission>
 
 </manifest> 

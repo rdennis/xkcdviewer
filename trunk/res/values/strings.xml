@@ -20,30 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
 -->
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
-    <string name="hello">Hello World, ComicSelector!</string>
     <string name="app_name">xkcd</string>
-    <string name="no_comics">No comics have been downloaded</string>
-    <string name="seperator">.  </string>
-    <string name="previous"> &lt; </string>
-    <string name="next"> &gt; </string>
-    <string name="go">Go</string>
-    <string name="menu_downloadall">Download All</string>
-    <string name="menu_clearall">Clear All</string>
-    <string name="menu_search">Search</string>
-    <string name="menu_settings">Settings</string>
-    <string name="menu_view">View</string>
-    <string name="menu_download">Download</string>
-    <string name="menu_clear">Clear</string>
-    <string name="menu_actions">Actions</string>
-    <string name="menu_random">Random Comic</string>
-    <string name="menu_goto">Go to xkcd.com</string>
-    <string name="menu_xkcd">xkcd.com</string>
-    <string name="menu_markfavorite">Mark as Favorite</string>
-    <string name="menu_favorite">Favorite</string>
-    <string name="menu_markunfavorite">Unmark as Favorite</string>
-    <string name="menu_unfavorite">Unfavorite</string>
-    <string name="list_update_success">Successfully updated comic list</string>
-    <string name="list_update_failure">Failed to update comic list</string>
-    <string name="list_updating">Updating comic list...</string>
-    <string name="url_error_msg">Fatal error... Please tell the developer you got a MalformedURLException.</string>
+    <string name="no_comics">No comics are available</string>
+    <string name="seperator">.&#160;</string>
 </resources>
