@@ -23,4 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     <string name="app_name">xkcd</string>
     <string name="no_comics">No comics are available</string>
     <string name="seperator">.&#160;</string>
+    <string name="updating_comics">Updating comic list...</string>
+    <string name="update_success">Successfully updated comic list</string>
+    <string name="update_failure">Failed to update comic list</string>
 </resources>
