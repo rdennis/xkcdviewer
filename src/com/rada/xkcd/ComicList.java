@@ -37,16 +37,14 @@ public class ComicList extends ListActivity {
   
   final ListActivity thisContext= this;
   
-  private static ComicDbAdapter mDbAdapter;
-  
   public static final int STATUS_SUCCESS= 0;
   public static final int STATUS_FAILURE= 1;
   public static final int STATUS_ERROR= 2;
   public static final int STATUS_CANCELLED= 3;
   public static final int UPDATE_DIALOGID= 500;
-  
+
+  private static ComicDbAdapter dbAdapter;
   private static ExecutorService updateExecutor;
-  
   private static Calendar lastUpdate;
   
   private class Update implements Runnable {
@@ -54,7 +52,7 @@ public class ComicList extends ListActivity {
     public void run() {
       int result;
       try {
-        mDbAdapter.updateList();
+        dbAdapter.updateList();
         result= STATUS_SUCCESS;
       } catch (MalformedURLException e) {
         result= STATUS_ERROR;
@@ -71,9 +69,9 @@ public class ComicList extends ListActivity {
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.comic_list);
-    if (mDbAdapter == null)
-      mDbAdapter= new ComicDbAdapter(this);
-    mDbAdapter.open();
+    if (dbAdapter == null)
+      dbAdapter= new ComicDbAdapter(this);
+    dbAdapter.open();
     
     if (updateExecutor == null)
       updateExecutor= Executors.newSingleThreadExecutor();
@@ -152,12 +150,12 @@ public class ComicList extends ListActivity {
     super.onDestroy();
     if (isFinishing()) {
       updateExecutor= null;
-      mDbAdapter= null;
+      dbAdapter= null;
     }
   }
   
   private synchronized void populateList() {
-    Cursor cursor= mDbAdapter.fetchAllComics();
+    Cursor cursor= dbAdapter.fetchAllComics();
     startManagingCursor(cursor);
     
     String[] from= new String[] { ComicDbAdapter.KEY_NUMBER, ComicDbAdapter.KEY_TITLE };

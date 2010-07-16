@@ -50,8 +50,8 @@ public class ComicDbAdapter {
   public static final String KEY_MAXNUMBER= "MAX(" + KEY_NUMBER + ")";
   private static final String[] ALL_COLUMNS= new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE };
   
-  private DatabaseHelper mDbHelper;
-  private SQLiteDatabase mDb;
+  private DatabaseHelper dbHelper;
+  private SQLiteDatabase database;
 
   private static final String TAG= "ComicDbAdapter";
 
@@ -163,8 +163,8 @@ public class ComicDbAdapter {
    * @throws SQLException if the opening/creation of the database fails
    */
   public ComicDbAdapter open() throws SQLException {
-    mDbHelper= new DatabaseHelper(mContext);
-    mDb= mDbHelper.getWritableDatabase();
+    dbHelper= new DatabaseHelper(mContext);
+    database= dbHelper.getWritableDatabase();
     return this;
   }
 
@@ -172,7 +172,7 @@ public class ComicDbAdapter {
    * Close the database
    */
   public void close() {
-    mDbHelper.close();
+    dbHelper.close();
   }
 
   /**
@@ -188,7 +188,7 @@ public class ComicDbAdapter {
     values.put(KEY_TITLE, title);
     values.put(KEY_FAVORITE, false);
 
-    return mDb.insert(DATABASE_TABLE, null, values);
+    return database.insert(DATABASE_TABLE, null, values);
   }
 
   /**
@@ -198,7 +198,7 @@ public class ComicDbAdapter {
    * @return Cursor over all the notes
    */
   public Cursor fetchAllComics() {
-    return mDb.query(DATABASE_TABLE,
+    return database.query(DATABASE_TABLE,
         ALL_COLUMNS,
         null, null, null, null,
         KEY_NUMBER + " DESC");
@@ -213,7 +213,7 @@ public class ComicDbAdapter {
    */
   public Cursor fetchComic(long number) throws SQLException {
     Cursor mCursor= 
-      mDb.query(true, DATABASE_TABLE, ALL_COLUMNS,
+      database.query(true, DATABASE_TABLE, ALL_COLUMNS,
                 KEY_NUMBER + "=" + number,
                 null, null, null, null, null);
 
@@ -235,7 +235,7 @@ public class ComicDbAdapter {
       columnList[0]= KEY_MAXNUMBER;
       
       Cursor mCursor=
-        mDb.query(true, DATABASE_TABLE, columnList,
+        database.query(true, DATABASE_TABLE, columnList,
                   null, null, null, null, null, null);
       if (mCursor != null)
         mCursor.moveToFirst();
@@ -259,7 +259,7 @@ public class ComicDbAdapter {
     values.put(KEY_TEXT, text);
     values.put(KEY_URL, url);
 
-    return mDb.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
+    return database.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
   }
 
   /**
@@ -278,7 +278,7 @@ public class ComicDbAdapter {
     values.put(KEY_URL, url);
     values.put(KEY_FAVORITE, favorite);
 
-    return mDb.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
+    return database.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
   }
 
   /**
@@ -292,7 +292,7 @@ public class ComicDbAdapter {
     ContentValues values= new ContentValues();
     values.put(KEY_NUMBER, favorite);
 
-    return mDb.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
+    return database.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
   }
   
   /**
@@ -303,7 +303,7 @@ public class ComicDbAdapter {
    */
   public boolean isFavorite(long number) {
     Cursor mCursor= 
-      mDb.query(true, DATABASE_TABLE, ALL_COLUMNS,
+      database.query(true, DATABASE_TABLE, ALL_COLUMNS,
                 KEY_NUMBER + "=" + number,
                 null, null, null, null, null);
     boolean result= mCursor.getInt(mCursor.getColumnIndexOrThrow(KEY_FAVORITE)) != 0;
@@ -323,7 +323,7 @@ public class ComicDbAdapter {
       line= archive.readLine();
     }
 
-    mDb.beginTransaction();
+    database.beginTransaction();
     Cursor mostRecentCursor= fetchMostRecentComic();
     long newest= (mostRecentCursor != null) ?
         mostRecentCursor.getLong(mostRecentCursor.getColumnIndexOrThrow(ComicDbAdapter.KEY_MAXNUMBER)) + 1 : 1;
@@ -348,7 +348,7 @@ public class ComicDbAdapter {
         }
       }
     }
-    mDb.setTransactionSuccessful();
-    mDb.endTransaction();
+    database.setTransactionSuccessful();
+    database.endTransaction();
   }
 }
