@@ -18,11 +18,18 @@
  */
 package com.rada.xkcd;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -30,6 +37,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.text.Html;
 import android.util.Log;
 
 public class ComicDbAdapter {
@@ -39,6 +47,7 @@ public class ComicDbAdapter {
   public static final String KEY_TEXT= "hover";
   public static final String KEY_URL= "url";
   public static final String KEY_FAVORITE= "favorite";
+  public static final String KEY_MAXNUMBER= "MAX(" + KEY_NUMBER + ")";
   private static final String[] ALL_COLUMNS= new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE };
   
   private DatabaseHelper mDbHelper;
@@ -177,6 +186,7 @@ public class ComicDbAdapter {
     ContentValues values= new ContentValues();
     values.put(KEY_NUMBER, number);
     values.put(KEY_TITLE, title);
+    values.put(KEY_FAVORITE, false);
 
     return mDb.insert(DATABASE_TABLE, null, values);
   }
@@ -221,9 +231,11 @@ public class ComicDbAdapter {
    */
   public Cursor fetchMostRecentComic() {
     try {
+      String[] columnList= ALL_COLUMNS.clone();
+      columnList[0]= KEY_MAXNUMBER;
+      
       Cursor mCursor=
-        mDb.query(true, DATABASE_TABLE, 
-                  new String[] { "MAX(" + KEY_NUMBER + ")", KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE },
+        mDb.query(true, DATABASE_TABLE, columnList,
                   null, null, null, null, null, null);
       if (mCursor != null)
         mCursor.moveToFirst();
@@ -297,5 +309,46 @@ public class ComicDbAdapter {
     boolean result= mCursor.getInt(mCursor.getColumnIndexOrThrow(KEY_FAVORITE)) != 0;
     mCursor.close();
     return result;
+  }
+  
+  public synchronized void updateList() throws MalformedURLException, IOException {
+    URL url= new URL("http://www.xkcd.com/archive/index.html");
+    HttpURLConnection conn= (HttpURLConnection) url.openConnection();
+    conn.setDoInput(true);
+    BufferedInputStream bi= new BufferedInputStream(conn.getInputStream());
+    DataInputStream archive= new DataInputStream(bi);
+
+    String line;
+    for (int i= 0; i < 67 && archive.available() > 0; ++i) {
+      line= archive.readLine();
+    }
+
+    mDb.beginTransaction();
+    Cursor mostRecentCursor= fetchMostRecentComic();
+    long newest= (mostRecentCursor != null) ?
+        mostRecentCursor.getLong(mostRecentCursor.getColumnIndexOrThrow(ComicDbAdapter.KEY_MAXNUMBER)) + 1 : 1;
+    long number= Long.MAX_VALUE;
+    String title;
+    Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
+    titlePattern= Pattern.compile("(?<=>).*?(?=<)");
+    Matcher m;
+    while (number > newest && archive.available() > 0) {
+      line= archive.readLine();
+      if (line.startsWith("<a")) {
+        m= numberPattern.matcher(line);
+        if (m.find()) {
+          number= Long.parseLong(m.group());
+          m= titlePattern.matcher(line);
+          if (m.find()) {
+            title= Html.fromHtml(m.group()).toString();
+            insertComic(number, title);
+            for (int i= 0; i < 3; ++i)
+              archive.readLine();
+          }
+        }
+      }
+    }
+    mDb.setTransactionSuccessful();
+    mDb.endTransaction();
   }
 }
