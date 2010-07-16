@@ -20,17 +20,16 @@ package com.rada.xkcd;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.Calendar;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import android.app.Dialog;
 import android.app.ListActivity;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.RemoteException;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
 
@@ -38,86 +37,88 @@ public class ComicList extends ListActivity {
   
   final ListActivity thisContext= this;
   
-  private static final int ID_LISTUPDATED= 1000;
-  private static final int ID_UPDATELIST= 1001;
+  private static ComicDbAdapter mDbAdapter;
   
-  private ComicDbAdapter mDbAdapter;
+  public static final int STATUS_SUCCESS= 0;
+  public static final int STATUS_FAILURE= 1;
+  public static final int STATUS_ERROR= 2;
+  public static final int STATUS_CANCELLED= 3;
+  public static final int UPDATE_DIALOGID= 500;
   
-  public static final int UPDATE_DIALOGID= 0;
+  private static ExecutorService updateExecutor;
   
-  boolean mIsBound= false;
+  private static Calendar lastUpdate;
   
-  private class UpdateThread extends Thread {
-    
-    private boolean ready= false;
-    public Handler handler;
-    
+  private class Update implements Runnable {
+    @Override
     public void run() {
-      Looper.prepare();
-      handler= new IncomingHandler();
-      ready= true;
-      Looper.loop();
-    }
-    
-    public boolean isReady() {
-      return ready;
-    }
-    
-    private class IncomingHandler extends Handler {
-      @Override
-      public void handleMessage(Message message) {
-        switch (message.what) {
-          case ID_UPDATELIST: {
-            int result= 0;
-            try {
-              mDbAdapter.updateList();
-            } catch (MalformedURLException e) {
-              result= 1;
-            } catch (IOException e) {
-              result= 2;
-            }
-            Message answer= Message.obtain(null, message.arg1, result, 0);
-            try {
-              message.replyTo.send(answer);
-            } catch (RemoteException e) {
-              //it failed!!!
-            }
-          } break;
-          default: {
-            super.handleMessage(message);
-          } break;
-        }
+      int result;
+      try {
+        mDbAdapter.updateList();
+        result= STATUS_SUCCESS;
+      } catch (MalformedURLException e) {
+        result= STATUS_ERROR;
+      } catch (IOException e) {
+        result= STATUS_FAILURE;
       }
+      
+      thisContext.runOnUiThread(new UpdateDone(result));
     }
   }
-  
-  private UpdateThread updateThread= new UpdateThread();
   
   /** Called when the activity is first created. */
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.comic_list);
-    mDbAdapter= new ComicDbAdapter(this);
+    if (mDbAdapter == null)
+      mDbAdapter= new ComicDbAdapter(this);
     mDbAdapter.open();
-    showDialog(UPDATE_DIALOGID);
-    if (!updateThread.isAlive())
-      updateThread.start();
     
-    Message message= Message.obtain(null, ID_UPDATELIST, ID_LISTUPDATED, 0);
-    message.replyTo= messenger;
-    try {
-      while (!updateThread.isReady()) {/* wait */}
-      new Messenger(updateThread.handler).send(message);
-    } catch (RemoteException e) {
-      // TODO Auto-generated catch block
-      dismissDialog(UPDATE_DIALOGID);
+    if (updateExecutor == null)
+      updateExecutor= Executors.newSingleThreadExecutor();
+
+    Calendar now= Calendar.getInstance();
+    int lastYear, lastWeek, lastDay, nowYear, nowWeek, nowDay;
+    
+    if (lastUpdate != null) {
+      lastYear= lastUpdate.get(Calendar.YEAR);
+      lastWeek= lastUpdate.get(Calendar.WEEK_OF_YEAR);
+      lastDay= lastUpdate.get(Calendar.DAY_OF_WEEK);
+    } else {
+      lastYear= 0;
+      lastWeek= 0;
+      lastDay= 0;
+    }
+    
+    nowYear= now.get(Calendar.YEAR);
+    nowWeek= now.get(Calendar.WEEK_OF_YEAR);
+    nowDay= now.get(Calendar.DAY_OF_WEEK);
+
+    // This is a mess, I'm aware of that, but it makes it only update if it's necessary
+    if (// if it's a new year, update no matter what (this will affect updates in December and January mostly)
+        (nowYear > lastYear) ||
+
+        // if it's an update day and it hasn't been updated today
+        ((nowDay == Calendar.MONDAY || nowDay == Calendar.WEDNESDAY || nowDay == Calendar.FRIDAY) &&
+         ((nowWeek > lastWeek) || (nowDay - lastDay > 0))) ||
+
+        // if it's not an update day but it's past due
+        ((nowDay == Calendar.TUESDAY || nowDay == Calendar.THURSDAY || nowDay == Calendar.SATURDAY) &&
+         ((nowWeek > lastWeek) || (nowDay - lastDay > 1))) ||
+
+        // if it's Sunday and it wasn't updated since last Friday
+        ((nowDay == Calendar.SUNDAY) &&
+         ((nowWeek - lastWeek > 1) || ((nowWeek > lastWeek) && (lastDay < Calendar.FRIDAY))))
+       ) {
+      showDialog(UPDATE_DIALOGID);
+      updateExecutor.execute(new Update());
     }
   }
-  
+
   @Override
   protected void onSaveInstanceState(Bundle outState) {
-      super.onSaveInstanceState(outState);
+    super.onSaveInstanceState(outState);
   }
   
   @Override
@@ -128,21 +129,20 @@ public class ComicList extends ListActivity {
   @Override
   public void onStart() {
     super.onStart();
+    populateList();
   }
   
   @Override
   public void onResume() {
     super.onResume();
-    populateList();
   }
   
   @Override
   public void onPause() {
     super.onPause();
-    updateThread.interrupt();
   }
   
-  @Override
+  @Override 
   public void onStop() {
     super.onStop();
   }
@@ -150,6 +150,10 @@ public class ComicList extends ListActivity {
   @Override
   public void onDestroy() {
     super.onDestroy();
+    if (isFinishing()) {
+      updateExecutor= null;
+      mDbAdapter= null;
+    }
   }
   
   private synchronized void populateList() {
@@ -164,42 +168,23 @@ public class ComicList extends ListActivity {
     setListAdapter(comics);
   }
   
-  class IncomingHandler extends Handler {
-    @Override
-    public void handleMessage(Message message) {
-      switch (message.what) {
-        case ID_LISTUPDATED: {
-          dismissDialog(UPDATE_DIALOGID);
-          switch (message.arg1) {
-            case 0: {
-              populateList();
-              Toast.makeText(thisContext, R.string.update_success, Toast.LENGTH_SHORT).show();
-            } break;
-            case 1: {
-              Toast.makeText(thisContext, R.string.update_failure, Toast.LENGTH_SHORT).show();
-            } break;
-            case 2: {
-              Toast.makeText(thisContext, "Fatal error!!!", Toast.LENGTH_LONG).show();
-            } break;
-            default: {
-            } super.handleMessage(message);
-          }
-        }
-      }
-    }
-  }
-  
-  final Messenger messenger= new Messenger(new IncomingHandler());
-  
   @Override
   protected Dialog onCreateDialog(int id) {
     switch (id) {
       case UPDATE_DIALOGID: {
         ProgressDialog dialog= new ProgressDialog(this);
-        dialog.setMessage(this.getText(R.string.updating_comics));
+        dialog.setMessage(getText(R.string.updating_comics));
         dialog.setIndeterminate(true);
         dialog.setCancelable(true);
         dialog.setCanceledOnTouchOutside(true);
+        dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+
+          @Override
+          public void onCancel(DialogInterface dialog) {
+            updateExecutor.shutdownNow();
+            runOnUiThread(new UpdateDone(STATUS_CANCELLED));
+          }
+        });
         return dialog;
       }
       default:
@@ -207,9 +192,46 @@ public class ComicList extends ListActivity {
     }
   }
   
-  public final void updateFinished(boolean success) {
-    Toast toast= Toast.makeText(this, success? R.string.update_success : R.string.update_failure, Toast.LENGTH_SHORT);
+  private class UpdateDone implements Runnable {
+    
+    private int status;
+    
+    UpdateDone(int status) {
+      setStatus(status);
+    }
+    
+    public void setStatus(int status) {
+      this.status= status;
+    }
+    
+    @Override
+    public void run() {
+      updateFinished(status);
+    }
+  }
+  
+  public final void updateFinished(int status) {
     dismissDialog(UPDATE_DIALOGID);
-    toast.show();
+    Toast message;
+    switch (status) {
+      case STATUS_SUCCESS: {
+        message= Toast.makeText(this, R.string.update_success, Toast.LENGTH_SHORT);
+        populateList();
+        lastUpdate= Calendar.getInstance();
+      } break;
+      case STATUS_FAILURE: {
+        message= Toast.makeText(this, R.string.update_failure, Toast.LENGTH_SHORT);
+      } break;
+      case STATUS_CANCELLED: {
+        message= Toast.makeText(this, R.string.update_cancelled, Toast.LENGTH_SHORT);
+      } break;
+      case STATUS_ERROR: {
+        message= Toast.makeText(this, R.string.update_error, Toast.LENGTH_LONG);
+      } break;
+      default: {
+        message= Toast.makeText(this, "Unkown update status: " + status, Toast.LENGTH_LONG);
+      }
+    }
+    message.show();
   }
 }
