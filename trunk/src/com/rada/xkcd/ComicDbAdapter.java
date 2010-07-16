@@ -90,7 +90,7 @@ public class ComicDbAdapter {
   }
 
   /**
-   * Constructor - setup up the local context
+   * Constructor - setup the local context and copy the database if necessary
    * 
    * @param context context within which to work
    */

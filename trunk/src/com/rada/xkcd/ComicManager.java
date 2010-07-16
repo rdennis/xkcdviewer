@@ -33,13 +33,7 @@ public class ComicManager extends Service {
   
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
-//    String action= intent.getAction();
-//    if (action == "update") {
-//      ProgressDialog dialog= ProgressDialog.show(this, null, "Updating list...", true, true);
-
       return Service.START_NOT_STICKY;
-//    }
-//    return Service.START_NOT_STICKY;
   }
   
   @Override
