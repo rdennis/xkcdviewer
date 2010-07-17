@@ -287,7 +287,7 @@ public class ComicDbAdapter {
    */
   public boolean updateComic(long number, boolean favorite) {
     ContentValues values= new ContentValues();
-    values.put(KEY_NUMBER, favorite);
+    values.put(KEY_FAVORITE, favorite);
 
     return database.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
   }
@@ -301,12 +301,16 @@ public class ComicDbAdapter {
   public boolean isFavorite(long number) {
     Cursor cursor= 
       database.query(true, DATABASE_TABLE, ALL_COLUMNS,
-                KEY_NUMBER + "=" + number,
-                null, null, null, null, null);
-    int columnIndex= cursor.getColumnIndexOrThrow(KEY_FAVORITE);
-    boolean result= cursor.getInt(columnIndex) != 0;
-    cursor.close();
-    return result;
+                     KEY_NUMBER + "=" + number,
+                     null, null, null, null, null);
+    if (cursor != null) {
+      cursor.moveToFirst();
+      int columnIndex= cursor.getColumnIndexOrThrow(KEY_FAVORITE);
+      boolean result= cursor.getInt(columnIndex) != 0;
+      cursor.close();
+      return result;
+    }
+    return false;
   }
   
   public synchronized void updateList() throws MalformedURLException, IOException {

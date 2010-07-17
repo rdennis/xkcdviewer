@@ -29,7 +29,9 @@ import android.app.Dialog;
 import android.app.ListActivity;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -51,6 +53,7 @@ public class ComicList extends ListActivity {
   private ComicDbAdapter dbAdapter;
   private static Calendar lastUpdate;
   private ExecutorService updateExecutor;
+  private MenuInflater inflater= new MenuInflater(this);
   
   /** Called when the activity is first created. */
   @Override
@@ -63,37 +66,22 @@ public class ComicList extends ListActivity {
     updateExecutor= Executors.newSingleThreadExecutor();
 
     Calendar now= Calendar.getInstance();
-    int lastYear, lastWeek, lastDay, nowYear, nowWeek, nowDay;
-    
-    if (lastUpdate != null) {
-      lastYear= lastUpdate.get(Calendar.YEAR);
-      lastWeek= lastUpdate.get(Calendar.WEEK_OF_YEAR);
-      lastDay= lastUpdate.get(Calendar.DAY_OF_WEEK);
-    } else {
-      lastYear= 0;
-      lastWeek= 0;
-      lastDay= 0;
-    }
-    
-    nowYear= now.get(Calendar.YEAR);
-    nowWeek= now.get(Calendar.WEEK_OF_YEAR);
-    nowDay= now.get(Calendar.DAY_OF_WEEK);
+
+    int today= now.get(Calendar.DAY_OF_YEAR);
+    int weekday= now.get(Calendar.DAY_OF_WEEK);
+    int lastDay= (lastUpdate != null)? lastUpdate.get(Calendar.DAY_OF_YEAR) : -1;
 
     // This is a mess, I'm aware of that, but it makes it only update if it's necessary
-    if (// if it's a new year, update no matter what (this will affect updates in December and January mostly)
-        (nowYear > lastYear) ||
-
-        // if it's an update day and it hasn't been updated today
-        ((nowDay == Calendar.MONDAY || nowDay == Calendar.WEDNESDAY || nowDay == Calendar.FRIDAY) &&
-         ((nowWeek > lastWeek) || (nowDay - lastDay > 0))) ||
-
-        // if it's not an update day but it's past due
-        ((nowDay == Calendar.TUESDAY || nowDay == Calendar.THURSDAY || nowDay == Calendar.SATURDAY) &&
-         ((nowWeek > lastWeek) || (nowDay - lastDay > 1))) ||
-
-        // if it's Sunday and it wasn't updated since last Friday
-        ((nowDay == Calendar.SUNDAY) &&
-         ((nowWeek - lastWeek > 1) || ((nowWeek > lastWeek) && (lastDay < Calendar.FRIDAY))))
+    if (// if it's a new year, just update it
+        (today < lastDay) ||
+        // if it's update day and last update wasn't today
+        ((weekday == Calendar.MONDAY || weekday == Calendar.WEDNESDAY || weekday == Calendar.FRIDAY) &&
+         (today > lastDay)) ||
+        // if it's not update day but it wasn't updated yesterday
+        ((weekday == Calendar.TUESDAY || weekday == Calendar.THURSDAY || weekday == Calendar.SATURDAY) &&
+         (today - lastDay > 1)) ||
+        // if it's Sunday and it wasn't updated Friday or Saturday
+        ((weekday == Calendar.SUNDAY) && (today - lastDay > 2))
        ) {
       showDialog(UPDATE_DIALOGID);
       updateExecutor.execute(new Updater());
@@ -144,7 +132,7 @@ public class ComicList extends ListActivity {
   @Override
   public boolean onCreateOptionsMenu(Menu menu) {
     super.onCreateOptionsMenu(menu);
-    new MenuInflater(this).inflate(R.menu.selector_menu, menu);
+    inflater.inflate(R.menu.selector_menu, menu);
     return true;
   }
   
@@ -153,7 +141,7 @@ public class ComicList extends ListActivity {
     super.onCreateContextMenu(menu, v, menuInfo);
     
     AdapterContextMenuInfo info= (AdapterContextMenuInfo) menuInfo;
-    new MenuInflater(this).inflate(R.menu.selector_context, menu);
+    inflater.inflate(R.menu.selector_context, menu);
 
     File file= new File("/sdcard/xkcd/" + info.id);
     if (file.exists()) {
@@ -169,33 +157,70 @@ public class ComicList extends ListActivity {
   }
   
   @Override
+  public boolean onMenuItemSelected(int featureId, MenuItem item) {
+    switch(item.getItemId()) {
+      case R.id.menu_downloadall: {
+        Intent intent= new Intent(this, ComicDownloader.class);
+        intent.setAction(Comics.ACTION_DOWNLOAD);
+        startService(intent);
+        return true;
+      }
+      case R.id.menu_clearall: {
+        Intent intent= new Intent(this, ComicDownloader.class);
+        intent.setAction(Comics.ACTION_CLEAR);
+        startService(intent);
+        return true;
+      }
+      case R.id.menu_goto: {
+        Intent intent= new Intent();
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.addCategory(Intent.CATEGORY_BROWSABLE);
+        intent.setData(Uri.parse(Comics.MAIN_URL));
+        startActivity(intent);
+      }
+      case R.id.menu_search: {
+      }
+      case R.id.menu_settings: {
+      }
+      default: {
+        return super.onMenuItemSelected(featureId, item);
+      }
+    }
+  }
+  
+  @Override
   public boolean onContextItemSelected(MenuItem item) {
-//    Intent intent;
-//    AdapterContextMenuInfo info= (AdapterContextMenuInfo) item.getMenuInfo();
+    AdapterContextMenuInfo info= (AdapterContextMenuInfo) item.getMenuInfo();
     switch (item.getItemId()) {
-      case (R.id.menu_view):
-//        intent= new Intent(this, ComicViewer.class);
-//        intent.putExtra(Comics.KEY_NUMBER, info.id);
-//        startActivity(intent);
+      case R.id.menu_view: {
+        Intent intent= new Intent(this, ComicView.class);
+        intent.setAction(Comics.ACTION_VIEW);
+        intent.putExtra(Comics.KEY_NUMBER, info.id);
+        startActivity(intent);
         return true;
-      case (R.id.menu_download):
-//        intent= new Intent(this, ComicDownloader.class);
-//        intent.putExtra(Comics.KEY_NUMBER, info.id);
-//        intent.putExtra(ComicDownloader.ACTION, ComicDownloader.ACTION_DOWNLOAD);
-//        startService(intent);
+      }
+      case R.id.menu_download: {
+        Intent intent= new Intent(this, ComicDownloader.class);
+        intent.setAction(Comics.ACTION_DOWNLOAD);
+        intent.putExtra(Comics.KEY_NUMBER, info.id);
+        startService(intent);
         return true;
-      case (R.id.menu_clear):
-//        intent= new Intent(this, ComicDownloader.class);
-//        intent.putExtra(ComicDbAdapter.KEY_NUMBER, info.id);
-//        intent.putExtra(ComicDownloader.ACTION, ComicDownloader.ACTION_DELETE);
-//        startService(intent);
+      }
+      case R.id.menu_clear: {
+        Intent intent= new Intent(this, ComicDownloader.class);
+        intent.setAction(Comics.ACTION_CLEAR);
+        intent.putExtra(Comics.KEY_NUMBER, info.id);
+        startService(intent);
         return true;
-      case (R.id.menu_favorite):
-//        mDbHelper.updateComic(info.id, true);
+      }
+      case R.id.menu_favorite: {
+        dbAdapter.updateComic(info.id, true);
         return true;
-      case (R.id.menu_unfavorite):
-//        mDbHelper.updateComic(info.id, false);
+      }
+      case R.id.menu_unfavorite: {
+        dbAdapter.updateComic(info.id, false);
         return true;
+      }
     }
     return super.onContextItemSelected(item);
   }
