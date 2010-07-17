@@ -26,6 +26,10 @@ import java.net.URL;
 
 public final class Comics {
   
+  public static final String ACTION_VIEW= "com.rada.xkcd.action.VIEW";
+  public static final String ACTION_DOWNLOAD= "com.rada.xkcd.action.DOWNLOAD";
+  public static final String ACTION_CLEAR= "com.rada.xkcd.action.CLEAR";
+  
   public static final String KEY_NUMBER= "_id";
   public static final String KEY_TITLE= "title";
   public static final String KEY_TEXT= "hover";
@@ -41,7 +45,8 @@ public final class Comics {
   public static final int MESSAGE_DOWNLOAD= 500;
   public static final int MESSAGE_CLEAR= 501;
   
-  public static final String ARCHIVE_URL= "http://www.xkcd.com/archive/index.html";
+  public static final String MAIN_URL= "http://www.xkcd.com/";
+  public static final String ARCHIVE_URL= MAIN_URL + "archive/index.html";
   
   public static final InputStream download(URL url) throws IOException {
     HttpURLConnection conn= (HttpURLConnection) url.openConnection();
