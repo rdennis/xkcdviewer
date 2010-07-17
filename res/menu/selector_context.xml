@@ -19,23 +19,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
 1307, USA.
 -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.rada.xkcd"
-    android:versionCode="1"
-    android:versionName="1.0">
-  <application android:icon="@drawable/icon" android:label="@string/app_name">
-    <activity android:name=".ComicList"
-        android:label="@string/app_name">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-        <category android:name="android.intent.category.LAUNCHER" />
-      </intent-filter>
-    </activity>
-
-  
-</application>
-
-<uses-permission android:name="android.permission.INTERNET"/>
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-
-</manifest> 
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+  <item android:id="@+id/menu_view"
+      android:title="@string/menu_view"/>
+      
+  <item android:id="@+id/menu_download"
+      android:title="@string/menu_download"/>
+      
+  <item android:id="@+id/menu_clear"
+      android:title="@string/menu_clear"/>
+      
+  <item android:id="@+id/menu_favorite"
+      android:title="@string/menu_markfavorite"
+      android:titleCondensed="@string/menu_favorite"/>
+      
+  <item android:id="@+id/menu_unfavorite"
+      android:title="@string/menu_markunfavorite"
+      android:titleCondensed="@string/menu_unfavorite"/>
+</menu>

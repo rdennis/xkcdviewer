@@ -18,6 +18,7 @@
  */
 package com.rada.xkcd;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.Calendar;
@@ -30,6 +31,14 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView.AdapterContextMenuInfo;
+import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
 
@@ -37,44 +46,21 @@ public class ComicList extends ListActivity {
   
   final ListActivity thisContext= this;
   
-  public static final int STATUS_SUCCESS= 0;
-  public static final int STATUS_FAILURE= 1;
-  public static final int STATUS_ERROR= 2;
-  public static final int STATUS_CANCELLED= 3;
   public static final int UPDATE_DIALOGID= 500;
 
-  private static ComicDbAdapter dbAdapter;
-  private static ExecutorService updateExecutor;
+  private ComicDbAdapter dbAdapter;
   private static Calendar lastUpdate;
-  
-  private class Update implements Runnable {
-    @Override
-    public void run() {
-      int result;
-      try {
-        dbAdapter.updateList();
-        result= STATUS_SUCCESS;
-      } catch (MalformedURLException e) {
-        result= STATUS_ERROR;
-      } catch (IOException e) {
-        result= STATUS_FAILURE;
-      }
-      
-      thisContext.runOnUiThread(new UpdateDone(result));
-    }
-  }
+  private ExecutorService updateExecutor;
   
   /** Called when the activity is first created. */
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.comic_list);
-    if (dbAdapter == null)
-      dbAdapter= new ComicDbAdapter(this);
+    dbAdapter= new ComicDbAdapter(this);
     dbAdapter.open();
     
-    if (updateExecutor == null)
-      updateExecutor= Executors.newSingleThreadExecutor();
+    updateExecutor= Executors.newSingleThreadExecutor();
 
     Calendar now= Calendar.getInstance();
     int lastYear, lastWeek, lastDay, nowYear, nowWeek, nowDay;
@@ -110,15 +96,12 @@ public class ComicList extends ListActivity {
          ((nowWeek - lastWeek > 1) || ((nowWeek > lastWeek) && (lastDay < Calendar.FRIDAY))))
        ) {
       showDialog(UPDATE_DIALOGID);
-      updateExecutor.execute(new Update());
+      updateExecutor.execute(new Updater());
     }
+    
+    registerForContextMenu(getListView());
   }
 
-  @Override
-  protected void onSaveInstanceState(Bundle outState) {
-    super.onSaveInstanceState(outState);
-  }
-  
   @Override
   public void onRestart() {
     super.onRestart();
@@ -133,6 +116,11 @@ public class ComicList extends ListActivity {
   @Override
   public void onResume() {
     super.onResume();
+  }
+
+  @Override
+  protected void onSaveInstanceState(Bundle outState) {
+    super.onSaveInstanceState(outState);
   }
   
   @Override
@@ -149,21 +137,75 @@ public class ComicList extends ListActivity {
   public void onDestroy() {
     super.onDestroy();
     if (isFinishing()) {
-      updateExecutor= null;
       dbAdapter= null;
     }
   }
   
-  private synchronized void populateList() {
-    Cursor cursor= dbAdapter.fetchAllComics();
-    startManagingCursor(cursor);
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    super.onCreateOptionsMenu(menu);
+    new MenuInflater(this).inflate(R.menu.selector_menu, menu);
+    return true;
+  }
+  
+  @Override
+  public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
+    super.onCreateContextMenu(menu, v, menuInfo);
     
-    String[] from= new String[] { ComicDbAdapter.KEY_NUMBER, ComicDbAdapter.KEY_TITLE };
-    int [] to= new int[] { R.id.row_number, R.id.row_title };
-    
-    SimpleCursorAdapter comics=
-      new SimpleCursorAdapter(this, R.layout.comic_row, cursor, from, to);
-    setListAdapter(comics);
+    AdapterContextMenuInfo info= (AdapterContextMenuInfo) menuInfo;
+    new MenuInflater(this).inflate(R.menu.selector_context, menu);
+
+    File file= new File("/sdcard/xkcd/" + info.id);
+    if (file.exists()) {
+      menu.findItem(R.id.menu_download).setVisible(false);
+    } else {
+      menu.findItem(R.id.menu_clear).setVisible(false);
+    }
+    if (dbAdapter.isFavorite(info.id)) {
+      menu.findItem(R.id.menu_favorite).setVisible(false);
+    } else {
+      menu.findItem(R.id.menu_unfavorite).setVisible(false);
+    }
+  }
+  
+  @Override
+  public boolean onContextItemSelected(MenuItem item) {
+//    Intent intent;
+//    AdapterContextMenuInfo info= (AdapterContextMenuInfo) item.getMenuInfo();
+    switch (item.getItemId()) {
+      case (R.id.menu_view):
+//        intent= new Intent(this, ComicViewer.class);
+//        intent.putExtra(Comics.KEY_NUMBER, info.id);
+//        startActivity(intent);
+        return true;
+      case (R.id.menu_download):
+//        intent= new Intent(this, ComicDownloader.class);
+//        intent.putExtra(Comics.KEY_NUMBER, info.id);
+//        intent.putExtra(ComicDownloader.ACTION, ComicDownloader.ACTION_DOWNLOAD);
+//        startService(intent);
+        return true;
+      case (R.id.menu_clear):
+//        intent= new Intent(this, ComicDownloader.class);
+//        intent.putExtra(ComicDbAdapter.KEY_NUMBER, info.id);
+//        intent.putExtra(ComicDownloader.ACTION, ComicDownloader.ACTION_DELETE);
+//        startService(intent);
+        return true;
+      case (R.id.menu_favorite):
+//        mDbHelper.updateComic(info.id, true);
+        return true;
+      case (R.id.menu_unfavorite):
+//        mDbHelper.updateComic(info.id, false);
+        return true;
+    }
+    return super.onContextItemSelected(item);
+  }
+
+  @Override
+  protected void onListItemClick(ListView l, View v, int position, long id) {
+    super.onListItemClick(l, v, position, id);
+//    Intent intent= new Intent(this, ComicViewer.class);
+//    intent.putExtra(ComicDbAdapter.KEY_NUMBER, id);
+//    startActivity(intent);
   }
   
   @Override
@@ -180,7 +222,7 @@ public class ComicList extends ListActivity {
           @Override
           public void onCancel(DialogInterface dialog) {
             updateExecutor.shutdownNow();
-            runOnUiThread(new UpdateDone(STATUS_CANCELLED));
+            runOnUiThread(new UpdateFinisher(Comics.STATUS_CANCELLED));
           }
         });
         return dialog;
@@ -190,11 +232,40 @@ public class ComicList extends ListActivity {
     }
   }
   
-  private class UpdateDone implements Runnable {
+  private synchronized void populateList() {
+    Cursor cursor= dbAdapter.fetchAllComics();
+    startManagingCursor(cursor);
+    
+    String[] from= new String[] { Comics.KEY_NUMBER, Comics.KEY_TITLE };
+    int [] to= new int[] { R.id.row_number, R.id.row_title };
+    
+    SimpleCursorAdapter comics=
+      new SimpleCursorAdapter(this, R.layout.comic_row, cursor, from, to);
+    setListAdapter(comics);
+  }
+  
+  private class Updater implements Runnable {
+    @Override
+    public void run() {
+      int result;
+      try {
+        dbAdapter.updateList();
+        result= Comics.STATUS_SUCCESS;
+      } catch (MalformedURLException e) {
+        result= Comics.STATUS_ERROR;
+      } catch (IOException e) {
+        result= Comics.STATUS_FAILURE;
+      }
+      
+      thisContext.runOnUiThread(new UpdateFinisher(result));
+    }
+  }
+  
+  private class UpdateFinisher implements Runnable {
     
     private int status;
     
-    UpdateDone(int status) {
+    UpdateFinisher(int status) {
       setStatus(status);
     }
     
@@ -204,26 +275,26 @@ public class ComicList extends ListActivity {
     
     @Override
     public void run() {
-      updateFinished(status);
+      finishListUpdate(status);
     }
   }
   
-  public final void updateFinished(int status) {
+  public final void finishListUpdate(int status) {
     dismissDialog(UPDATE_DIALOGID);
     Toast message;
     switch (status) {
-      case STATUS_SUCCESS: {
+      case Comics.STATUS_SUCCESS: {
         message= Toast.makeText(this, R.string.update_success, Toast.LENGTH_SHORT);
         populateList();
         lastUpdate= Calendar.getInstance();
       } break;
-      case STATUS_FAILURE: {
+      case Comics.STATUS_FAILURE: {
         message= Toast.makeText(this, R.string.update_failure, Toast.LENGTH_SHORT);
       } break;
-      case STATUS_CANCELLED: {
+      case Comics.STATUS_CANCELLED: {
         message= Toast.makeText(this, R.string.update_cancelled, Toast.LENGTH_SHORT);
       } break;
-      case STATUS_ERROR: {
+      case Comics.STATUS_ERROR: {
         message= Toast.makeText(this, R.string.update_error, Toast.LENGTH_LONG);
       } break;
       default: {

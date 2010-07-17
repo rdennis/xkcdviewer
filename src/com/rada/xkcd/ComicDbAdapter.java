@@ -25,9 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,13 +40,13 @@ import android.util.Log;
 
 public class ComicDbAdapter {
 
-  public static final String KEY_NUMBER= "_id";
-  public static final String KEY_TITLE= "title";
-  public static final String KEY_TEXT= "hover";
-  public static final String KEY_URL= "url";
-  public static final String KEY_FAVORITE= "favorite";
-  public static final String KEY_MAXNUMBER= "MAX(" + KEY_NUMBER + ")";
-  private static final String[] ALL_COLUMNS= new String[] { KEY_NUMBER, KEY_TITLE, KEY_TEXT, KEY_URL, KEY_FAVORITE };
+  private static final String KEY_NUMBER= Comics.KEY_NUMBER;
+  private static final String KEY_TITLE= Comics.KEY_TITLE;
+  private static final String KEY_TEXT= Comics.KEY_TEXT;
+  private static final String KEY_URL= Comics.KEY_URL;
+  private static final String KEY_FAVORITE= Comics.KEY_FAVORITE;
+  private static final String KEY_MAXNUMBER= "MAX(" + KEY_NUMBER + ")";
+  private static final String[] ALL_COLUMNS= Comics.ALL_COLUMNS;
   
   private DatabaseHelper dbHelper;
   private SQLiteDatabase database;
@@ -102,8 +100,7 @@ public class ComicDbAdapter {
       try {
         copyDatabase(DATABASE_NAME);
       } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+        // the copy failed... not much else to do except let dbAdapter handle it
       }
   }
   
@@ -302,20 +299,18 @@ public class ComicDbAdapter {
    * @return true if it is a favorite, false otherwise
    */
   public boolean isFavorite(long number) {
-    Cursor mCursor= 
+    Cursor cursor= 
       database.query(true, DATABASE_TABLE, ALL_COLUMNS,
                 KEY_NUMBER + "=" + number,
                 null, null, null, null, null);
-    boolean result= mCursor.getInt(mCursor.getColumnIndexOrThrow(KEY_FAVORITE)) != 0;
-    mCursor.close();
+    int columnIndex= cursor.getColumnIndexOrThrow(KEY_FAVORITE);
+    boolean result= cursor.getInt(columnIndex) != 0;
+    cursor.close();
     return result;
   }
   
   public synchronized void updateList() throws MalformedURLException, IOException {
-    URL url= new URL("http://www.xkcd.com/archive/index.html");
-    HttpURLConnection conn= (HttpURLConnection) url.openConnection();
-    conn.setDoInput(true);
-    BufferedInputStream bi= new BufferedInputStream(conn.getInputStream());
+    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.ARCHIVE_URL));
     DataInputStream archive= new DataInputStream(bi);
 
     String line;

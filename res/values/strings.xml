@@ -28,4 +28,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     <string name="update_failure">Failed to update comic list</string>
     <string name="update_error">Fatal error with URL!!! Please inform the developer.</string>
     <string name="update_cancelled">Cancelled list update</string>
+    
+    <string name="menu_view">View</string>
+    <string name="menu_search">Search</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_xkcd">xkcd.com</string>
+    <string name="menu_goto">Go to xkcd.com</string>
+    <string name="menu_download">Download</string>
+    <string name="menu_downloadall">Download All</string>
+    <string name="menu_clear">Clear</string>
+    <string name="menu_clearall">Clear All</string>
+    <string name="menu_favorite">Favorite</string>
+    <string name="menu_markfavorite">Mark as favorite</string>
+    <string name="menu_unfavorite">Unfavorite</string>
+    <string name="menu_markunfavorite">Unmark as favorite</string>
 </resources>
