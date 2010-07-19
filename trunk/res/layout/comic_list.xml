@@ -30,7 +30,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
       android:fastScrollEnabled="true"
       android:fadeScrollbars="true"
       android:fadingEdge="vertical"
-      android:scrollbars="none" />
+      android:scrollbars="none"
+      android:smoothScrollbar="true" />
   <TextView android:id="@+id/android:empty"
       android:layout_width="fill_parent"
       android:layout_height="wrap_content"
