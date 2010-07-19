@@ -296,6 +296,41 @@ public class ComicDbAdapter {
   }
   
   /**
+   * This connects to xkcd.com to update the information about the given comic.
+   * 
+   * @param number number of the comic to update
+   * @return true if successfully updated, false otherwise
+   * @throws MalformedURLException if the url is incorrectly formed... this means you screwed up
+   * @throws IOException if the connection fails
+   */
+  public boolean updateComic(long number) throws MalformedURLException, IOException {
+    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.MAIN_URL + number + "/index.html"));
+    DataInputStream page= new DataInputStream(bi);
+
+    String line= null;
+    for (int i= 0; i <= 77 && page.available() > 0; ++i) {
+      line= page.readLine();
+    }
+
+    String url;
+    String text;
+    Pattern urlPattern= Pattern.compile("(?<=src=\").*?(?=\")"),
+            textPattern= Pattern.compile("(?<=title=\").*?(?=\")");
+    Matcher m;
+    m= urlPattern.matcher(line);
+    if (m.find()) {
+      url= Html.fromHtml(m.group()).toString();
+      m= textPattern.matcher(line);
+      if (m.find()) {
+        text= Html.fromHtml(m.group()).toString();
+        return updateComic(number, text, url);
+      } else
+        return false;
+    } else
+      return false;
+  }
+  
+  /**
    * Return whether or not the given comic is a favorite.
    * 
    * @param number number of the comic to reference
@@ -316,12 +351,19 @@ public class ComicDbAdapter {
     return false;
   }
   
+  /**
+   * Updates the list by retrieving the comic list from the server
+   * and adding necessary information.
+   * 
+   * @throws MalformedURLException if the url is incorrectly formed... this means you screwed up
+   * @throws IOException if the connection fails
+   */
   public synchronized void updateList() throws MalformedURLException, IOException {
     BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.ARCHIVE_URL));
     DataInputStream archive= new DataInputStream(bi);
 
     String line;
-    for (int i= 0; i < 67 && archive.available() > 0; ++i) {
+    for (int i= 0; i <= 68 && archive.available() > 0; ++i) {
       line= archive.readLine();
     }
 
@@ -332,7 +374,7 @@ public class ComicDbAdapter {
     long number= Long.MAX_VALUE;
     String title;
     Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
-    titlePattern= Pattern.compile("(?<=>).*?(?=<)");
+            titlePattern= Pattern.compile("(?<=>).*?(?=<)");
     Matcher m;
     while (number > newest && archive.available() > 0) {
       line= archive.readLine();
