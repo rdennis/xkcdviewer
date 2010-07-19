@@ -18,6 +18,7 @@
  */
 package com.rada.xkcd;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -44,6 +45,9 @@ public final class Comics {
   
   public static final int MESSAGE_DOWNLOAD= 500;
   public static final int MESSAGE_CLEAR= 501;
+  
+  public static final String SD_DIR_PATH= "/sdcard/xkcd/";
+  public static final File SD_DIR= new File(SD_DIR_PATH);
   
   public static final String MAIN_URL= "http://www.xkcd.com/";
   public static final String ARCHIVE_URL= MAIN_URL + "archive/index.html";

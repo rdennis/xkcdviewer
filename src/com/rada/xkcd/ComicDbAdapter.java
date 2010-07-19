@@ -231,13 +231,16 @@ public class ComicDbAdapter {
       String[] columnList= ALL_COLUMNS.clone();
       columnList[0]= KEY_MAXNUMBER;
       
-      Cursor mCursor=
+      Cursor cursor=
         database.query(true, DATABASE_TABLE, columnList,
                   null, null, null, null, null, null);
-      if (mCursor != null)
-        mCursor.moveToFirst();
+      if (cursor != null) {
+        cursor.moveToFirst();
+      }
+      long number= cursor.getLong(cursor.getColumnIndexOrThrow(KEY_MAXNUMBER));
   
-      return mCursor;
+      // odd, I know, this is used to normalize the column names
+      return fetchComic(number);
     } catch (SQLException e) {
       throw e;
     }
@@ -325,7 +328,7 @@ public class ComicDbAdapter {
     database.beginTransaction();
     Cursor mostRecentCursor= fetchMostRecentComic();
     long newest= (mostRecentCursor != null) ?
-        mostRecentCursor.getLong(mostRecentCursor.getColumnIndexOrThrow(ComicDbAdapter.KEY_MAXNUMBER)) + 1 : 1;
+        mostRecentCursor.getLong(mostRecentCursor.getColumnIndexOrThrow(KEY_NUMBER)) + 1 : 1;
     long number= Long.MAX_VALUE;
     String title;
     Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
