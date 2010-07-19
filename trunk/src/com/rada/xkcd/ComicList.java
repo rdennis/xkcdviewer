@@ -72,16 +72,16 @@ public class ComicList extends ListActivity {
     int lastDay= (lastUpdate != null)? lastUpdate.get(Calendar.DAY_OF_YEAR) : -1;
 
     // This is a mess, I'm aware of that, but it makes it only update if it's necessary
-    if (// if it's a new year, just update it
-        (today < lastDay) ||
-        // if it's update day and last update wasn't today
+    if (// if it's update day and last update wasn't today
         ((weekday == Calendar.MONDAY || weekday == Calendar.WEDNESDAY || weekday == Calendar.FRIDAY) &&
-         (today > lastDay)) ||
+         (today != lastDay)) ||
+         
         // if it's not update day but it wasn't updated yesterday
         ((weekday == Calendar.TUESDAY || weekday == Calendar.THURSDAY || weekday == Calendar.SATURDAY) &&
-         (today - lastDay > 1)) ||
+         (Math.abs(today - lastDay) > 1)) ||
+         
         // if it's Sunday and it wasn't updated Friday or Saturday
-        ((weekday == Calendar.SUNDAY) && (today - lastDay > 2))
+        ((weekday == Calendar.SUNDAY) && (Math.abs(today - lastDay) > 2))
        ) {
       showDialog(UPDATE_DIALOGID);
       updateExecutor.execute(new Updater());
@@ -227,10 +227,10 @@ public class ComicList extends ListActivity {
 
   @Override
   protected void onListItemClick(ListView l, View v, int position, long id) {
-    super.onListItemClick(l, v, position, id);
-//    Intent intent= new Intent(this, ComicViewer.class);
-//    intent.putExtra(ComicDbAdapter.KEY_NUMBER, id);
-//    startActivity(intent);
+    Intent intent= new Intent(this, ComicView.class);
+    intent.setAction(Comics.ACTION_VIEW);
+    intent.putExtra(Comics.KEY_NUMBER, id);
+    startActivity(intent);
   }
   
   @Override
@@ -246,8 +246,9 @@ public class ComicList extends ListActivity {
 
           @Override
           public void onCancel(DialogInterface dialog) {
-            updateExecutor.shutdownNow();
-            runOnUiThread(new UpdateFinisher(Comics.STATUS_CANCELLED));
+            // TODO find a way to shutdown the thread on cancel
+            // updateExecutor.shutdownNow();
+            // runOnUiThread(new UpdateFinisher(Comics.STATUS_CANCELLED));
           }
         });
         return dialog;
