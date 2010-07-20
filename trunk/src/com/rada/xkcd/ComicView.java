@@ -130,17 +130,6 @@ public class ComicView extends Activity {
     nextButton.setOnClickListener(new OnClickListener() {
       @Override
       public void onClick(View arg0) {
-        if (comicNumber.equals(maxNumber))
-          comicNumber= 1L;
-        else
-          ++comicNumber;
-        updateDisplay();
-      }
-    });
-
-    prevButton.setOnClickListener(new OnClickListener() {
-      @Override
-      public void onClick(View arg0) {
         if (comicNumber.equals(1L))
           comicNumber= maxNumber;
         else
@@ -149,76 +138,15 @@ public class ComicView extends Activity {
       }
     });
 
-    comicImage.setOnTouchListener(new OnTouchListener() {
-      Matrix matrix= new Matrix();
-      Matrix savedMatrix= new Matrix();
-      PointF start= new PointF();
-      PointF mid= new PointF();
-      
-      static final int NONE= 0;
-      static final int DRAG= 1;
-      static final int ZOOM= 2;
-
-      int mode= NONE;
-      float oldDist;
-      
-      private float spacing(MotionEvent event) {
-        float x = event.getX(0) - event.getX(1);
-        float y = event.getY(0) - event.getY(1);
-        return FloatMath.sqrt(x * x + y * y);
-     }
-      
-      private void midPoint(PointF point, MotionEvent event) {
-        float x = event.getX(0) + event.getX(1);
-        float y = event.getY(0) + event.getY(1);
-        point.set(x / 2, y / 2);
-      }
-      
+    prevButton.setOnClickListener(new OnClickListener() {
       @Override
-      public boolean onTouch(View v, MotionEvent event) {
-        ImageView view= (ImageView) v;
-        if (!view.hasFocus())
-          view.requestFocus();
-        
-        switch (event.getAction() & MotionEvent.ACTION_MASK) {
-          case MotionEvent.ACTION_DOWN: {
-            savedMatrix.set(matrix);
-            start.set(event.getX(), event.getY());
-            mode= DRAG;
-          } break;
-          case MotionEvent.ACTION_POINTER_DOWN: {
-            oldDist = spacing(event);
-            Log.d(TAG, "oldDist=" + oldDist);
-            if (oldDist > 10f) {
-              savedMatrix.set(matrix);
-              midPoint(mid, event);
-              mode = ZOOM;
-            }
-          } break;
-          case MotionEvent.ACTION_POINTER_UP:
-          case MotionEvent.ACTION_UP: {
-            mode= NONE;
-            return !(start.x == event.getX() && start.y == event.getY());
-          }
-          case MotionEvent.ACTION_MOVE: {
-            if (mode == DRAG) {
-              matrix.set(savedMatrix);
-              matrix.postTranslate(event.getX() - start.x, event.getY() - start.y);
-            } else if (mode == ZOOM) {
-              float newDist= spacing(event);
-              Log.d(TAG, "newDist=" + newDist);
-              if (newDist > 10f) {
-                 matrix.set(savedMatrix);
-                 float scale = newDist / oldDist;
-                 matrix.postScale(scale, scale, mid.x, mid.y);
-              }
-            }
-          } break;
-        }
-        
-        view.setImageMatrix(matrix);
-        return false;
-      }  
+      public void onClick(View arg0) {
+        if (comicNumber.equals(maxNumber))
+          comicNumber= 1L;
+        else
+          ++comicNumber;
+        updateDisplay();
+      }
     });
     
     updateDisplay();
@@ -312,11 +240,109 @@ public class ComicView extends Activity {
         BufferedInputStream bi= new BufferedInputStream(new FileInputStream(file));
         BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(bi));
         comicImage.setImageDrawable(drawable);
+        comicImage.setImageMatrix(new Matrix());
         comicImage.setOnClickListener(new OnClickListener() {
           @Override
           public void onClick(View v) {
             showDialog(HOVERTEXT_DIALOGID);
           }
+        });
+        comicImage.setOnTouchListener(new OnTouchListener() {
+          Matrix matrix= new Matrix();
+          Matrix savedMatrix= new Matrix();
+          PointF start= new PointF();
+          PointF mid= new PointF();
+          
+          static final int NONE= 0;
+          static final int DRAG= 1;
+          static final int ZOOM= 2;
+
+          int mode= NONE;
+          float oldDist;
+          
+          private float spacing(MotionEvent event) {
+            float x = event.getX(0) - event.getX(1);
+            float y = event.getY(0) - event.getY(1);
+            return FloatMath.sqrt(x * x + y * y);
+         }
+          
+          private void midPoint(PointF point, MotionEvent event) {
+            float x = event.getX(0) + event.getX(1);
+            float y = event.getY(0) + event.getY(1);
+            point.set(x / 2, y / 2);
+          }
+          
+          @Override
+          public boolean onTouch(View v, MotionEvent event) {
+            ImageView view= (ImageView) v;
+            
+            if (!view.hasFocus())
+              view.requestFocus();
+            
+            final float width= (float) view.getWidth();
+            final float height= (float) view.getHeight();
+            final float intrinsicWidth= comicImage.getDrawable().getIntrinsicWidth();
+            final float intrinsicHeight= comicImage.getDrawable().getIntrinsicHeight();
+            final float minScaleX= width / intrinsicWidth;
+            final float minScaleY= height / intrinsicHeight;
+            final float minScale= (minScaleX < minScaleY) ? minScaleX : minScaleY;
+            
+            switch (event.getAction() & MotionEvent.ACTION_MASK) {
+              case MotionEvent.ACTION_DOWN: {
+                savedMatrix.set(matrix);
+                start.set(event.getX(), event.getY());
+                mode= DRAG;
+              } break;
+              case MotionEvent.ACTION_POINTER_DOWN: {
+                oldDist = spacing(event);
+                Log.d(TAG, "oldDist=" + oldDist);
+                if (oldDist > 10f) {
+                  savedMatrix.set(matrix);
+                  midPoint(mid, event);
+                  mode = ZOOM;
+                }
+              } break;
+              case MotionEvent.ACTION_POINTER_UP:
+              case MotionEvent.ACTION_UP: {
+                mode= NONE;
+                return !(start.x == event.getX() && start.y == event.getY());
+              }
+              case MotionEvent.ACTION_MOVE: {
+                if (mode == DRAG) {
+                  matrix.set(savedMatrix);
+                  matrix.postTranslate(event.getX() - start.x, event.getY() - start.y);
+                } else if (mode == ZOOM) {
+                  float newDist= spacing(event);
+                  Log.d(TAG, "newDist=" + newDist);
+                  if (newDist > 10f) {
+                     matrix.set(savedMatrix);
+                     float scale = newDist / oldDist;
+                     matrix.postScale(scale, scale, mid.x, mid.y);
+                  }
+                }
+              } break;
+            }
+            
+            float[] values= new float[9];
+            matrix.getValues(values);
+            float scale= values[Matrix.MSCALE_X];
+            if (scale < minScale)
+                matrix.setScale(minScale, minScale);
+            
+            if (values[Matrix.MTRANS_Y] < 0)
+              matrix.postTranslate(0, -values[Matrix.MTRANS_Y]);
+            if (values[Matrix.MTRANS_X] < 0)
+              matrix.postTranslate(-values[Matrix.MTRANS_X], 0);
+            
+            matrix.getValues(values);
+            
+            Log.d(TAG, "[" + values[0] + "," + values[1] + "," + values[2] + "] " + 
+                       "[" + values[3] + "," + values[4] + "," + values[5] + "] " +
+                       "[" + values[6] + "," + values[7] + "," + values[8] + "]" );
+            
+            view.setImageMatrix(matrix);
+            return false;
+          }  
         });
       } catch (FileNotFoundException e) {
         // TODO Auto-generated catch block
