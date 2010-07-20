@@ -38,8 +38,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
         android:background="@android:color/white"
         android:focusable="true"
         android:focusableInTouchMode="true"
-        android:scaleType="matrix"
-        android:scrollbarFadeDuration="500" />
+        android:scaleType="matrix" />
   </FrameLayout>
 
   <LinearLayout android:id="@+id/controllayout"

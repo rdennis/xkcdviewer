@@ -15,6 +15,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.database.Cursor;
@@ -27,10 +28,13 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.util.FloatMath;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnFocusChangeListener;
 import android.view.View.OnTouchListener;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -84,6 +88,34 @@ public class ComicView extends Activity {
     nextButton= (Button) findViewById(R.id.button_next);
     prevButton= (Button) findViewById(R.id.button_prev);
     comicImage= (ImageView) findViewById(R.id.image_comic);
+    
+    comicImage.setFocusable(true);
+    
+    comicText.setOnFocusChangeListener(new OnFocusChangeListener() {
+      @Override
+      public void onFocusChange(View v, boolean hasFocus) {
+        EditText view= (EditText) v;
+        
+        if (!hasFocus) {
+          InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+          imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        } else {
+          view.selectAll();
+        }
+      }
+    });
+    comicText.setOnKeyListener(new View.OnKeyListener() {
+      
+      @Override
+      public boolean onKey(View v, int keyCode, KeyEvent event) {
+        // TODO Auto-generated method stub
+        if (keyCode == KeyEvent.KEYCODE_ENTER) {
+          goButton.performClick();
+          return true;
+        }
+        return false;
+      }      
+    });
     
     goButton.setOnClickListener(new OnClickListener() {
       @Override
@@ -145,31 +177,34 @@ public class ComicView extends Activity {
       @Override
       public boolean onTouch(View v, MotionEvent event) {
         ImageView view= (ImageView) v;
+        if (!view.hasFocus())
+          view.requestFocus();
         
         switch (event.getAction() & MotionEvent.ACTION_MASK) {
           case MotionEvent.ACTION_DOWN: {
-            if (mode == NONE && event.getPointerCount() == 1) {
+            savedMatrix.set(matrix);
+            start.set(event.getX(), event.getY());
+            mode= DRAG;
+          } break;
+          case MotionEvent.ACTION_POINTER_DOWN: {
+            oldDist = spacing(event);
+            Log.d(TAG, "oldDist=" + oldDist);
+            if (oldDist > 10f) {
               savedMatrix.set(matrix);
-              start.set(event.getX(), event.getY());
-              mode= DRAG;
-            } else if (mode == DRAG || event.getPointerCount() == 2) {
-              oldDist = spacing(event);
-              Log.d(TAG, "oldDist=" + oldDist);
-              if (oldDist > 10f) {
-                savedMatrix.set(matrix);
-                midPoint(mid, event);
-                mode= ZOOM;
-                Log.d(TAG, "mode=ZOOM" );
-              }
+              midPoint(mid, event);
+              mode = ZOOM;
             }
           } break;
-          case MotionEvent.ACTION_UP:
-          case MotionEvent.ACTION_POINTER_UP: {
-            mode= (event.getPointerCount() > 1) ? DRAG : NONE;
+          case MotionEvent.ACTION_POINTER_UP:
+          case MotionEvent.ACTION_UP: {
+            mode= NONE;
             return !(start.x == event.getX() && start.y == event.getY());
           }
           case MotionEvent.ACTION_MOVE: {
-            if (mode == ZOOM || event.getPointerCount() > 1){
+            if (mode == DRAG) {
+              matrix.set(savedMatrix);
+              matrix.postTranslate(event.getX() - start.x, event.getY() - start.y);
+            } else if (mode == ZOOM) {
               float newDist= spacing(event);
               Log.d(TAG, "newDist=" + newDist);
               if (newDist > 10f) {
@@ -177,10 +212,6 @@ public class ComicView extends Activity {
                  float scale = newDist / oldDist;
                  matrix.postScale(scale, scale, mid.x, mid.y);
               }
-              mode= ZOOM;
-            } else if (mode == DRAG) {
-              matrix.set(savedMatrix);
-              matrix.postTranslate(event.getX() - start.x, event.getY() - start.y);
             }
           } break;
         }
@@ -266,6 +297,7 @@ public class ComicView extends Activity {
   private void updateDisplay() {
     // TODO write this function, it should update the current views based on the number member
     comicText.setText(comicNumber.toString());
+    comicText.clearFocus();
     
     Cursor cursor= dbHelper.fetchComic(comicNumber);
     String newTitle= comicNumber + ". " + cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TITLE));
@@ -280,7 +312,6 @@ public class ComicView extends Activity {
         BufferedInputStream bi= new BufferedInputStream(new FileInputStream(file));
         BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(bi));
         comicImage.setImageDrawable(drawable);
-//        comicImage.getParent().childDrawableStateChanged(comicImage);
         comicImage.setOnClickListener(new OnClickListener() {
           @Override
           public void onClick(View v) {
