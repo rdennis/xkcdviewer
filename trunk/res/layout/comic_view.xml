@@ -24,18 +24,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     android:layout_height="fill_parent"
     android:orientation="vertical">
   
-<LinearLayout android:id="@+id/imagelayout"
+  <FrameLayout android:id="@+id/image_vertscroll"
       android:layout_width="fill_parent"
       android:layout_height="fill_parent"
       android:layout_weight="1"
       android:background="@android:color/white"
-      android:focusable="true">
+      android:fadeScrollbars="true"
+      android:isScrollContainer="true">
     <ImageView android:id="@+id/image_comic"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
         android:layout_weight="1"
-        android:background="@android:color/white"/>
-  </LinearLayout>
+        android:background="@android:color/white"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:scaleType="matrix"
+        android:scrollbarFadeDuration="500" />
+  </FrameLayout>
 
   <LinearLayout android:id="@+id/controllayout"
       android:layout_width="fill_parent"
