@@ -8,27 +8,39 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.DialogInterface.OnCancelListener;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.PointF;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.util.FloatMath;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnTouchListener;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 public class ComicView extends Activity {
   
   private final Activity thisContext= this;
+  
+  private static final int HOVERTEXT_DIALOGID= 800;
+  private static final int DOWNLOAD_DIALOGID= 801;
 
   private ComicDbAdapter dbHelper;
   private volatile Long comicNumber= null;
@@ -40,6 +52,10 @@ public class ComicView extends Activity {
   private Button prevButton;
   private ImageView comicImage;
   
+  private ExecutorService executor;
+  
+  private static final String TAG= "ComicView";
+  
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -47,6 +63,8 @@ public class ComicView extends Activity {
     
     dbHelper= new ComicDbAdapter(this);
     dbHelper.open();
+    
+    executor= Executors.newSingleThreadExecutor();
 
     Cursor cursor= dbHelper.fetchMostRecentComic();
     maxNumber= cursor.getLong(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
@@ -98,6 +116,79 @@ public class ComicView extends Activity {
         updateDisplay();
       }
     });
+
+    comicImage.setOnTouchListener(new OnTouchListener() {
+      Matrix matrix= new Matrix();
+      Matrix savedMatrix= new Matrix();
+      PointF start= new PointF();
+      PointF mid= new PointF();
+      
+      static final int NONE= 0;
+      static final int DRAG= 1;
+      static final int ZOOM= 2;
+
+      int mode= NONE;
+      float oldDist;
+      
+      private float spacing(MotionEvent event) {
+        float x = event.getX(0) - event.getX(1);
+        float y = event.getY(0) - event.getY(1);
+        return FloatMath.sqrt(x * x + y * y);
+     }
+      
+      private void midPoint(PointF point, MotionEvent event) {
+        float x = event.getX(0) + event.getX(1);
+        float y = event.getY(0) + event.getY(1);
+        point.set(x / 2, y / 2);
+      }
+      
+      @Override
+      public boolean onTouch(View v, MotionEvent event) {
+        ImageView view= (ImageView) v;
+        
+        switch (event.getAction() & MotionEvent.ACTION_MASK) {
+          case MotionEvent.ACTION_DOWN: {
+            if (mode == NONE && event.getPointerCount() == 1) {
+              savedMatrix.set(matrix);
+              start.set(event.getX(), event.getY());
+              mode= DRAG;
+            } else if (mode == DRAG || event.getPointerCount() == 2) {
+              oldDist = spacing(event);
+              Log.d(TAG, "oldDist=" + oldDist);
+              if (oldDist > 10f) {
+                savedMatrix.set(matrix);
+                midPoint(mid, event);
+                mode= ZOOM;
+                Log.d(TAG, "mode=ZOOM" );
+              }
+            }
+          } break;
+          case MotionEvent.ACTION_UP:
+          case MotionEvent.ACTION_POINTER_UP: {
+            mode= (event.getPointerCount() > 1) ? DRAG : NONE;
+            return !(start.x == event.getX() && start.y == event.getY());
+          }
+          case MotionEvent.ACTION_MOVE: {
+            if (mode == ZOOM || event.getPointerCount() > 1){
+              float newDist= spacing(event);
+              Log.d(TAG, "newDist=" + newDist);
+              if (newDist > 10f) {
+                 matrix.set(savedMatrix);
+                 float scale = newDist / oldDist;
+                 matrix.postScale(scale, scale, mid.x, mid.y);
+              }
+              mode= ZOOM;
+            } else if (mode == DRAG) {
+              matrix.set(savedMatrix);
+              matrix.postTranslate(event.getX() - start.x, event.getY() - start.y);
+            }
+          } break;
+        }
+        
+        view.setImageMatrix(matrix);
+        return false;
+      }  
+    });
     
     updateDisplay();
   }
@@ -138,12 +229,52 @@ public class ComicView extends Activity {
     super.onDestroy();
   }
   
+  @Override
+  public Dialog onCreateDialog(int id) {
+    switch (id) {
+      case DOWNLOAD_DIALOGID: {
+        ProgressDialog dialog= new ProgressDialog(this);
+        dialog.setMessage("Downloading comic...");
+        dialog.setIndeterminate(true);
+        dialog.setOnCancelListener(new OnCancelListener() {
+          @Override
+          public void onCancel(DialogInterface dialog) {
+            thisContext.finish();
+          }
+        });
+        return dialog;
+      }
+      case HOVERTEXT_DIALOGID: {
+        Cursor cursor= dbHelper.fetchComic(comicNumber);
+        String text= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TEXT));
+        AlertDialog.Builder builder= new AlertDialog.Builder(thisContext);
+        builder.setCancelable(true);
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+          public void onClick(DialogInterface dialog, int which) {
+            // do nothing, hope it cancels
+            dialog.dismiss();
+          }
+        });
+        builder.setMessage(text);
+        return builder.create();
+      }
+      default:
+        return null;
+    }
+  }
+  
   private void updateDisplay() {
     // TODO write this function, it should update the current views based on the number member
     comicText.setText(comicNumber.toString());
+    
+    Cursor cursor= dbHelper.fetchComic(comicNumber);
+    String newTitle= comicNumber + ". " + cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TITLE));
+    setTitle(newTitle);
+    
     File file= new File(Comics.SD_DIR_PATH + comicNumber);
     if (!file.exists()) {
-      Executors.newSingleThreadExecutor().execute(new ImageGetter());
+      showDialog(DOWNLOAD_DIALOGID);
+      executor.execute(new ImageGetter());
     } else {
       try {
         BufferedInputStream bi= new BufferedInputStream(new FileInputStream(file));
@@ -153,19 +284,7 @@ public class ComicView extends Activity {
         comicImage.setOnClickListener(new OnClickListener() {
           @Override
           public void onClick(View v) {
-            // TODO Auto-generated method stub
-            Cursor cursor= dbHelper.fetchComic(comicNumber);
-            String text= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TEXT));
-            AlertDialog.Builder builder= new AlertDialog.Builder(thisContext);
-            builder.setCancelable(true);
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-              public void onClick(DialogInterface dialog, int which) {
-                // do nothing, hope it cancels
-                dialog.dismiss();
-              }
-            });
-            builder.setMessage(text);
-            builder.create().show();
+            showDialog(HOVERTEXT_DIALOGID);
           }
         });
       } catch (FileNotFoundException e) {
@@ -194,7 +313,7 @@ public class ComicView extends Activity {
             Bitmap image= BitmapFactory.decodeStream(bi);
             FileOutputStream ostream= new FileOutputStream(file);
             BufferedOutputStream bo= new BufferedOutputStream(ostream);
-            image.compress(CompressFormat.PNG, 100, bo);
+            image.compress(CompressFormat.PNG, 50, bo);
             bi.close();
             bo.close();
             ostream.close();
@@ -223,10 +342,20 @@ public class ComicView extends Activity {
       switch (status) {
         case Comics.STATUS_SUCCESS: {
           updateDisplay();
+          dismissDialog(DOWNLOAD_DIALOGID);
         } break;
         case Comics.STATUS_ERROR:
         case Comics.STATUS_FAILURE: {
-          Toast.makeText(thisContext, "It failed!!!", Toast.LENGTH_LONG);
+          AlertDialog.Builder builder= new AlertDialog.Builder(thisContext.getApplicationContext());
+          builder.setCancelable(true);
+          builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+              // do nothing, hope it cancels
+              dialog.dismiss();
+            }
+          });
+          builder.setMessage("Failed to get comic.");
+          builder.create().show();
           thisContext.finish();
         } break;
       }
