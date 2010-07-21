@@ -306,7 +306,7 @@ public class ComicList extends ListActivity {
   }
   
   public final void finishListUpdate(int status) {
-    dismissDialog(UPDATE_DIALOGID);
+    removeDialog(UPDATE_DIALOGID);
     Toast message;
     switch (status) {
       case Comics.STATUS_SUCCESS: {

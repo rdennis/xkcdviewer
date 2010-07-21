@@ -85,7 +85,6 @@ public class ComicView extends Activity {
     comicImage= (ImageView) findViewById(R.id.image_comic);
     
     comicImage.setFocusable(true);
-    comicImage.setOnTouchListener(new ImageViewTouchListener());
     
     comicText.setOnFocusChangeListener(new OnFocusChangeListener() {
       @Override
@@ -243,6 +242,7 @@ public class ComicView extends Activity {
         BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(bi));
         comicImage.setImageDrawable(drawable);
         comicImage.setImageMatrix(new Matrix());
+        comicImage.setOnTouchListener(new ImageViewTouchListener());
         comicImage.setOnClickListener(new OnClickListener() {
           @Override
           public void onClick(View v) {
