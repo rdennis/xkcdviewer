@@ -130,7 +130,7 @@ public class ComicView extends Activity {
     nextButton.setOnClickListener(new OnClickListener() {
       @Override
       public void onClick(View arg0) {
-        if (comicNumber.equals(1L))
+        if (comicNumber.equals(1l))
           comicNumber= maxNumber;
         else
           --comicNumber;
@@ -142,7 +142,7 @@ public class ComicView extends Activity {
       @Override
       public void onClick(View arg0) {
         if (comicNumber.equals(maxNumber))
-          comicNumber= 1L;
+          comicNumber= 1l;
         else
           ++comicNumber;
         updateDisplay();
@@ -206,12 +206,20 @@ public class ComicView extends Activity {
       case HOVERTEXT_DIALOGID: {
         Cursor cursor= dbHelper.fetchComic(comicNumber);
         String text= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TEXT));
+        if (text == null)
+          try {
+            dbHelper.updateComic(comicNumber);
+            cursor= dbHelper.fetchComic(comicNumber);
+            text= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TEXT));
+          } catch (IOException e) {
+            text= "Could not connect to update comic hover text.";
+          }
         AlertDialog.Builder builder= new AlertDialog.Builder(thisContext);
         builder.setCancelable(true);
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface dialog, int which) {
             // do nothing, hope it cancels
-            dialog.dismiss();
+            removeDialog(HOVERTEXT_DIALOGID);
           }
         });
         builder.setMessage(text);
@@ -248,17 +256,22 @@ public class ComicView extends Activity {
           }
         });
         comicImage.setOnTouchListener(new OnTouchListener() {
+          
           Matrix matrix= new Matrix();
+          Matrix lastMatrix= new Matrix();
           Matrix savedMatrix= new Matrix();
-          PointF start= new PointF();
+          
           PointF mid= new PointF();
+          PointF start= new PointF();
+          PointF lastPoint= new PointF();
+          
+          float oldDist;
           
           static final int NONE= 0;
           static final int DRAG= 1;
           static final int ZOOM= 2;
-
-          int mode= NONE;
-          float oldDist;
+          
+          int mode;
           
           private float spacing(MotionEvent event) {
             float x = event.getX(0) - event.getX(1);
@@ -278,21 +291,23 @@ public class ComicView extends Activity {
             
             if (!view.hasFocus())
               view.requestFocus();
-            
-            final float width= (float) view.getWidth();
-            final float height= (float) view.getHeight();
+
+            final float viewWidth= (float) view.getWidth();
+            final float viewHeight= (float) view.getHeight();
             final float intrinsicWidth= comicImage.getDrawable().getIntrinsicWidth();
             final float intrinsicHeight= comicImage.getDrawable().getIntrinsicHeight();
-            final float minScaleX= width / intrinsicWidth;
-            final float minScaleY= height / intrinsicHeight;
+            final float minScaleX= viewWidth / intrinsicWidth;
+            final float minScaleY= viewHeight / intrinsicHeight;
             final float minScale= (minScaleX < minScaleY) ? minScaleX : minScaleY;
-            
+
             switch (event.getAction() & MotionEvent.ACTION_MASK) {
               case MotionEvent.ACTION_DOWN: {
                 savedMatrix.set(matrix);
                 start.set(event.getX(), event.getY());
                 mode= DRAG;
-              } break;
+                lastPoint.set(event.getX(), event.getY());
+                return false;
+              }
               case MotionEvent.ACTION_POINTER_DOWN: {
                 oldDist = spacing(event);
                 Log.d(TAG, "oldDist=" + oldDist);
@@ -309,8 +324,8 @@ public class ComicView extends Activity {
               }
               case MotionEvent.ACTION_MOVE: {
                 if (mode == DRAG) {
-                  matrix.set(savedMatrix);
-                  matrix.postTranslate(event.getX() - start.x, event.getY() - start.y);
+                  matrix.set(lastMatrix);
+                  matrix.postTranslate(event.getX() - lastPoint.x, event.getY() - lastPoint.y);
                 } else if (mode == ZOOM) {
                   float newDist= spacing(event);
                   Log.d(TAG, "newDist=" + newDist);
@@ -325,23 +340,62 @@ public class ComicView extends Activity {
             
             float[] values= new float[9];
             matrix.getValues(values);
-            float scale= values[Matrix.MSCALE_X];
-            if (scale < minScale)
-                matrix.setScale(minScale, minScale);
             
-            if (values[Matrix.MTRANS_Y] < 0)
-              matrix.postTranslate(0, -values[Matrix.MTRANS_Y]);
-            if (values[Matrix.MTRANS_X] < 0)
-              matrix.postTranslate(-values[Matrix.MTRANS_X], 0);
+            float scale= values[Matrix.MSCALE_X];
+            
+            if (scale < minScale) {
+              float newScale= minScale / scale;
+              matrix.postScale(newScale, newScale, mid.x, mid.y);
+            }
             
             matrix.getValues(values);
             
-            Log.d(TAG, "[" + values[0] + "," + values[1] + "," + values[2] + "] " + 
-                       "[" + values[3] + "," + values[4] + "," + values[5] + "] " +
-                       "[" + values[6] + "," + values[7] + "," + values[8] + "]" );
+            scale= values[Matrix.MSCALE_X];
+            float actualWidth= scale * intrinsicWidth;
+            float actualHeight= scale * intrinsicHeight;
+            float minX= viewWidth - actualWidth;
+            float maxX= minX;
+            float minY= viewHeight - actualHeight;
+            float maxY= minY;
             
+            if (maxX < 0f)
+              maxX= 0f;
+            if (minX > 0f)
+              minX= 0f;
+            if (maxY < 0f)
+              maxY= 0f;
+            if (minY > 0f)
+              minY= 0f;
+
+            float transX= values[Matrix.MTRANS_X];
+            float transY= values[Matrix.MTRANS_Y];
+            
+            if (transX > maxX)
+              matrix.postTranslate(maxX - transX, 0);
+            if (transX < minX)
+              matrix.postTranslate(minX - transX, 0);
+            if (transY > maxY)
+              matrix.postTranslate(0, maxY - transY);
+            if (transY < minY)
+              matrix.postTranslate(0, minY - transY);
+            
+            lastPoint.set(event.getX(), event.getY());
+            lastMatrix.set(matrix);
             view.setImageMatrix(matrix);
-            return false;
+
+            
+//          Log.d(TAG, "viewWidth=" + viewWidth);
+//          Log.d(TAG, "viewHeight=" + viewHeight);
+//          Log.d(TAG, "intrinsicWidth=" + intrinsicWidth);
+//          Log.d(TAG, "intrinsicHeight=" + intrinsicHeight);
+//          Log.d(TAG, "minX=" + minX);
+//          Log.d(TAG, "maxX=" + maxX);
+//          Log.d(TAG, "minY=" + minY);
+//          Log.d(TAG, "maxY=" + maxY);
+//          Log.d(TAG, "transX=" + transX);
+//          Log.d(TAG, "transY=" + transY);
+            
+            return true;
           }  
         });
       } catch (FileNotFoundException e) {
