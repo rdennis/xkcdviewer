@@ -23,17 +23,12 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.graphics.PointF;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
-import android.util.FloatMath;
-import android.util.Log;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnFocusChangeListener;
-import android.view.View.OnTouchListener;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -58,7 +53,7 @@ public class ComicView extends Activity {
   
   private ExecutorService executor;
   
-  private static final String TAG= "ComicView";
+//  private static final String TAG= "ComicView";
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -90,6 +85,7 @@ public class ComicView extends Activity {
     comicImage= (ImageView) findViewById(R.id.image_comic);
     
     comicImage.setFocusable(true);
+    comicImage.setOnTouchListener(new ImageViewTouchListener());
     
     comicText.setOnFocusChangeListener(new OnFocusChangeListener() {
       @Override
@@ -108,7 +104,6 @@ public class ComicView extends Activity {
       
       @Override
       public boolean onKey(View v, int keyCode, KeyEvent event) {
-        // TODO Auto-generated method stub
         if (keyCode == KeyEvent.KEYCODE_ENTER) {
           goButton.performClick();
           return true;
@@ -231,7 +226,6 @@ public class ComicView extends Activity {
   }
   
   private void updateDisplay() {
-    // TODO write this function, it should update the current views based on the number member
     comicText.setText(comicNumber.toString());
     comicText.clearFocus();
     
@@ -255,152 +249,9 @@ public class ComicView extends Activity {
             showDialog(HOVERTEXT_DIALOGID);
           }
         });
-        comicImage.setOnTouchListener(new OnTouchListener() {
-          
-          Matrix matrix= new Matrix();
-          Matrix lastMatrix= new Matrix();
-          Matrix savedMatrix= new Matrix();
-          
-          PointF mid= new PointF();
-          PointF start= new PointF();
-          PointF lastPoint= new PointF();
-          
-          float oldDist;
-          
-          static final int NONE= 0;
-          static final int DRAG= 1;
-          static final int ZOOM= 2;
-          
-          int mode;
-          
-          private float spacing(MotionEvent event) {
-            float x = event.getX(0) - event.getX(1);
-            float y = event.getY(0) - event.getY(1);
-            return FloatMath.sqrt(x * x + y * y);
-         }
-          
-          private void midPoint(PointF point, MotionEvent event) {
-            float x = event.getX(0) + event.getX(1);
-            float y = event.getY(0) + event.getY(1);
-            point.set(x / 2, y / 2);
-          }
-          
-          @Override
-          public boolean onTouch(View v, MotionEvent event) {
-            ImageView view= (ImageView) v;
-            
-            if (!view.hasFocus())
-              view.requestFocus();
-
-            final float viewWidth= (float) view.getWidth();
-            final float viewHeight= (float) view.getHeight();
-            final float intrinsicWidth= comicImage.getDrawable().getIntrinsicWidth();
-            final float intrinsicHeight= comicImage.getDrawable().getIntrinsicHeight();
-            final float minScaleX= viewWidth / intrinsicWidth;
-            final float minScaleY= viewHeight / intrinsicHeight;
-            final float minScale= (minScaleX < minScaleY) ? minScaleX : minScaleY;
-
-            switch (event.getAction() & MotionEvent.ACTION_MASK) {
-              case MotionEvent.ACTION_DOWN: {
-                savedMatrix.set(matrix);
-                start.set(event.getX(), event.getY());
-                mode= DRAG;
-                lastPoint.set(event.getX(), event.getY());
-                return false;
-              }
-              case MotionEvent.ACTION_POINTER_DOWN: {
-                oldDist = spacing(event);
-                Log.d(TAG, "oldDist=" + oldDist);
-                if (oldDist > 10f) {
-                  savedMatrix.set(matrix);
-                  midPoint(mid, event);
-                  mode = ZOOM;
-                }
-              } break;
-              case MotionEvent.ACTION_POINTER_UP:
-              case MotionEvent.ACTION_UP: {
-                mode= NONE;
-                return !(start.x == event.getX() && start.y == event.getY());
-              }
-              case MotionEvent.ACTION_MOVE: {
-                if (mode == DRAG) {
-                  matrix.set(lastMatrix);
-                  matrix.postTranslate(event.getX() - lastPoint.x, event.getY() - lastPoint.y);
-                } else if (mode == ZOOM) {
-                  float newDist= spacing(event);
-                  Log.d(TAG, "newDist=" + newDist);
-                  if (newDist > 10f) {
-                     matrix.set(savedMatrix);
-                     float scale = newDist / oldDist;
-                     matrix.postScale(scale, scale, mid.x, mid.y);
-                  }
-                }
-              } break;
-            }
-            
-            float[] values= new float[9];
-            matrix.getValues(values);
-            
-            float scale= values[Matrix.MSCALE_X];
-            
-            if (scale < minScale) {
-              float newScale= minScale / scale;
-              matrix.postScale(newScale, newScale, mid.x, mid.y);
-            }
-            
-            matrix.getValues(values);
-            
-            scale= values[Matrix.MSCALE_X];
-            float actualWidth= scale * intrinsicWidth;
-            float actualHeight= scale * intrinsicHeight;
-            float minX= viewWidth - actualWidth;
-            float maxX= minX;
-            float minY= viewHeight - actualHeight;
-            float maxY= minY;
-            
-            if (maxX < 0f)
-              maxX= 0f;
-            if (minX > 0f)
-              minX= 0f;
-            if (maxY < 0f)
-              maxY= 0f;
-            if (minY > 0f)
-              minY= 0f;
-
-            float transX= values[Matrix.MTRANS_X];
-            float transY= values[Matrix.MTRANS_Y];
-            
-            if (transX > maxX)
-              matrix.postTranslate(maxX - transX, 0);
-            if (transX < minX)
-              matrix.postTranslate(minX - transX, 0);
-            if (transY > maxY)
-              matrix.postTranslate(0, maxY - transY);
-            if (transY < minY)
-              matrix.postTranslate(0, minY - transY);
-            
-            lastPoint.set(event.getX(), event.getY());
-            lastMatrix.set(matrix);
-            view.setImageMatrix(matrix);
-
-            
-//          Log.d(TAG, "viewWidth=" + viewWidth);
-//          Log.d(TAG, "viewHeight=" + viewHeight);
-//          Log.d(TAG, "intrinsicWidth=" + intrinsicWidth);
-//          Log.d(TAG, "intrinsicHeight=" + intrinsicHeight);
-//          Log.d(TAG, "minX=" + minX);
-//          Log.d(TAG, "maxX=" + maxX);
-//          Log.d(TAG, "minY=" + minY);
-//          Log.d(TAG, "maxY=" + maxY);
-//          Log.d(TAG, "transX=" + transX);
-//          Log.d(TAG, "transY=" + transY);
-            
-            return true;
-          }  
-        });
       } catch (FileNotFoundException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+        // the file got deleted between exist check and file open, try it again
+        updateDisplay();
       }
     }
   }
@@ -438,13 +289,13 @@ public class ComicView extends Activity {
         result= Comics.STATUS_FAILURE;
       }
       
-      runOnUiThread(new ImageGetDone(result));
+      runOnUiThread(new ImageGottenFinisher(result));
     }
   }
   
-  private class ImageGetDone implements Runnable {
+  private class ImageGottenFinisher implements Runnable {
     int status;
-    ImageGetDone(int status) {
+    ImageGottenFinisher(int status) {
       this.status= status;
     }
     
