@@ -164,7 +164,7 @@ public class ComicView extends Activity {
   @Override
   public void onSaveInstanceState(Bundle outState) {
     super.onSaveInstanceState(outState);
-    outState.putSerializable(Comics.KEY_NUMBER, comicNumber);
+    outState.putLong(Comics.KEY_NUMBER, comicNumber);
   }
   
   @Override
@@ -233,7 +233,7 @@ public class ComicView extends Activity {
     setTitle(newTitle);
     
     File file= new File(Comics.SD_DIR_PATH + comicNumber);
-    if (!file.exists()) {
+    if (file.length() == 0) {
       showDialog(DOWNLOAD_DIALOGID);
       executor.execute(new ImageGetter());
     } else {
@@ -267,19 +267,17 @@ public class ComicView extends Activity {
         File file= new File(Comics.SD_DIR_PATH + comicNumber);
         
         synchronized(comicNumber) {
-          if (file.createNewFile()) {
-            dbHelper.updateComic(comicNumber);
-            Cursor cursor= dbHelper.fetchComic(comicNumber);
-            String url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
-            BufferedInputStream bi= new BufferedInputStream(Comics.download(url));
-            Bitmap image= BitmapFactory.decodeStream(bi);
-            FileOutputStream ostream= new FileOutputStream(file);
-            BufferedOutputStream bo= new BufferedOutputStream(ostream);
-            image.compress(CompressFormat.PNG, 50, bo);
-            bi.close();
-            bo.close();
-            ostream.close();
-          }
+          dbHelper.updateComic(comicNumber);
+          Cursor cursor= dbHelper.fetchComic(comicNumber);
+          String url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
+          BufferedInputStream bi= new BufferedInputStream(Comics.download(url));
+          Bitmap image= BitmapFactory.decodeStream(bi);
+          FileOutputStream ostream= new FileOutputStream(file);
+          BufferedOutputStream bo= new BufferedOutputStream(ostream);
+          image.compress(CompressFormat.PNG, 50, bo);
+          bi.close();
+          bo.close();
+          ostream.close();
         }
         
         result= Comics.STATUS_SUCCESS;
@@ -301,24 +299,23 @@ public class ComicView extends Activity {
     
     @Override
     public void run() {
+      dismissDialog(DOWNLOAD_DIALOGID);
       switch (status) {
         case Comics.STATUS_SUCCESS: {
           updateDisplay();
-          dismissDialog(DOWNLOAD_DIALOGID);
         } break;
         case Comics.STATUS_ERROR:
         case Comics.STATUS_FAILURE: {
-          AlertDialog.Builder builder= new AlertDialog.Builder(thisContext.getApplicationContext());
+          AlertDialog.Builder builder= new AlertDialog.Builder(thisContext);
           builder.setCancelable(true);
           builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
               // do nothing, hope it cancels
-              dialog.dismiss();
+              thisContext.finish();
             }
           });
           builder.setMessage("Failed to get comic.");
           builder.create().show();
-          thisContext.finish();
         } break;
       }
     }

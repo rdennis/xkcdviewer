@@ -41,6 +41,8 @@ public class ImageViewTouchListener implements OnTouchListener {
     float y = event.getY(0) + event.getY(1);
     point.set(x / 2, y / 2);
   }
+
+  long startTime;
   
   @Override
   public boolean onTouch(View v, MotionEvent event) {
@@ -56,6 +58,7 @@ public class ImageViewTouchListener implements OnTouchListener {
     final float minScaleX= viewWidth / intrinsicWidth;
     final float minScaleY= viewHeight / intrinsicHeight;
     final float minScale= (minScaleX < minScaleY) ? minScaleX : minScaleY;
+    final float maxScale= 4f; // or instead: 2f * ((minScaleX > minScaleY) ? minScaleX : minScaleY);
 
     switch (event.getAction() & MotionEvent.ACTION_MASK) {
       case MotionEvent.ACTION_DOWN: {
@@ -64,6 +67,7 @@ public class ImageViewTouchListener implements OnTouchListener {
         start.set(event.getX(), event.getY());
         mode= DRAG;
         lastPoint.set(event.getX(), event.getY());
+        startTime= event.getEventTime();
         return false;
       }
       case MotionEvent.ACTION_POINTER_DOWN: {
@@ -78,6 +82,9 @@ public class ImageViewTouchListener implements OnTouchListener {
       case MotionEvent.ACTION_POINTER_UP:
       case MotionEvent.ACTION_UP: {
         mode= NONE;
+        long thisTime= event.getEventTime();
+        if (thisTime - startTime < 150)
+          return false;
         return moved;
       }
       case MotionEvent.ACTION_MOVE: {
@@ -104,6 +111,11 @@ public class ImageViewTouchListener implements OnTouchListener {
     
     if (scale < minScale) {
       float newScale= minScale / scale;
+      matrix.postScale(newScale, newScale, mid.x, mid.y);
+      scale*= newScale;
+    }
+    if (scale > maxScale) {
+      float newScale= maxScale / scale;
       matrix.postScale(newScale, newScale, mid.x, mid.y);
       scale*= newScale;
     }
