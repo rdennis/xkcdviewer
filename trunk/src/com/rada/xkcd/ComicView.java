@@ -1,3 +1,21 @@
+/*
+ * Copyright (C) 2010  Alex Avance
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
+ * 1307, USA.
+ */
 package com.rada.xkcd;
 
 import java.io.BufferedInputStream;
@@ -120,20 +138,20 @@ public class ComicView extends Activity {
     
     nextButton.setOnClickListener(new OnClickListener() {
       public void onClick(View arg0) {
-        if (comicNumber.equals(1l))
-          comicNumber= maxNumber;
+        if (comicNumber.equals(maxNumber))
+          comicNumber= 1l;
         else
-          --comicNumber;
+          ++comicNumber;
         updateDisplay();
       }
     });
 
     prevButton.setOnClickListener(new OnClickListener() {
       public void onClick(View arg0) {
-        if (comicNumber.equals(maxNumber))
-          comicNumber= 1l;
+        if (comicNumber.equals(1l))
+          comicNumber= maxNumber;
         else
-          ++comicNumber;
+          --comicNumber;
         updateDisplay();
       }
     });
@@ -264,9 +282,15 @@ public class ComicView extends Activity {
         File file= new File(Comics.SD_DIR_PATH + comicNumber);
         
         synchronized(comicNumber) {
-          dbHelper.updateComic(comicNumber);
           Cursor cursor= dbHelper.fetchComic(comicNumber);
           String url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
+          
+          if (url == null) {
+            dbHelper.updateComic(comicNumber);
+            cursor= dbHelper.fetchComic(comicNumber);
+            url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
+          }
+          
           BufferedInputStream bi= new BufferedInputStream(Comics.download(url));
           Bitmap image= BitmapFactory.decodeStream(bi);
           FileOutputStream ostream= new FileOutputStream(file);

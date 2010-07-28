@@ -159,29 +159,30 @@ public class ComicList extends ListActivity {
   @Override
   public boolean onMenuItemSelected(int featureId, MenuItem item) {
     switch(item.getItemId()) {
-      case R.id.menu_downloadall: {
-        Intent intent= new Intent(this, ComicDownloader.class);
-        intent.setAction(Comics.ACTION_DOWNLOAD);
-        startService(intent);
-        return true;
-      }
-      case R.id.menu_clearall: {
-        Intent intent= new Intent(this, ComicDownloader.class);
-        intent.setAction(Comics.ACTION_CLEAR);
-        startService(intent);
-        return true;
-      }
+//      case R.id.menu_downloadall: {
+//        Intent intent= new Intent(this, ComicDownloader.class);
+//        intent.setAction(Comics.ACTION_DOWNLOAD);
+//        startService(intent);
+//        return true;
+//      }
+//      case R.id.menu_clearall: {
+//        Intent intent= new Intent(this, ComicDownloader.class);
+//        intent.setAction(Comics.ACTION_CLEAR);
+//        startService(intent);
+//        return true;
+//      }
       case R.id.menu_goto: {
         Intent intent= new Intent();
         intent.setAction(Intent.ACTION_VIEW);
         intent.addCategory(Intent.CATEGORY_BROWSABLE);
         intent.setData(Uri.parse(Comics.MAIN_URL));
         startActivity(intent);
+        return true;
       }
-      case R.id.menu_search: {
-      }
-      case R.id.menu_settings: {
-      }
+//      case R.id.menu_search: {
+//      }
+//      case R.id.menu_settings: {
+//      }
       default: {
         return super.onMenuItemSelected(featureId, item);
       }
