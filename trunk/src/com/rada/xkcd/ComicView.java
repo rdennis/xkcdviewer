@@ -22,7 +22,6 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -33,6 +32,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ImageView.ScaleType;
 
 public class ComicView extends Activity {
   
@@ -87,7 +87,6 @@ public class ComicView extends Activity {
     comicImage.setFocusable(true);
     
     comicText.setOnFocusChangeListener(new OnFocusChangeListener() {
-      @Override
       public void onFocusChange(View v, boolean hasFocus) {
         EditText view= (EditText) v;
         
@@ -100,8 +99,6 @@ public class ComicView extends Activity {
       }
     });
     comicText.setOnKeyListener(new View.OnKeyListener() {
-      
-      @Override
       public boolean onKey(View v, int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_ENTER) {
           goButton.performClick();
@@ -122,7 +119,6 @@ public class ComicView extends Activity {
     });
     
     nextButton.setOnClickListener(new OnClickListener() {
-      @Override
       public void onClick(View arg0) {
         if (comicNumber.equals(1l))
           comicNumber= maxNumber;
@@ -133,7 +129,6 @@ public class ComicView extends Activity {
     });
 
     prevButton.setOnClickListener(new OnClickListener() {
-      @Override
       public void onClick(View arg0) {
         if (comicNumber.equals(maxNumber))
           comicNumber= 1l;
@@ -190,7 +185,6 @@ public class ComicView extends Activity {
         dialog.setMessage("Downloading comic...");
         dialog.setIndeterminate(true);
         dialog.setOnCancelListener(new OnCancelListener() {
-          @Override
           public void onCancel(DialogInterface dialog) {
             thisContext.finish();
           }
@@ -212,7 +206,11 @@ public class ComicView extends Activity {
         builder.setCancelable(true);
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
           public void onClick(DialogInterface dialog, int which) {
-            // do nothing, hope it cancels
+            removeDialog(HOVERTEXT_DIALOGID);
+          }
+        });
+        builder.setOnCancelListener(new OnCancelListener() {
+          public void onCancel(DialogInterface dialog) {
             removeDialog(HOVERTEXT_DIALOGID);
           }
         });
@@ -241,10 +239,9 @@ public class ComicView extends Activity {
         BufferedInputStream bi= new BufferedInputStream(new FileInputStream(file));
         BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(bi));
         comicImage.setImageDrawable(drawable);
-        comicImage.setImageMatrix(new Matrix());
+        comicImage.setScaleType(ScaleType.FIT_START);
         comicImage.setOnTouchListener(new ImageViewTouchListener());
         comicImage.setOnClickListener(new OnClickListener() {
-          @Override
           public void onClick(View v) {
             showDialog(HOVERTEXT_DIALOGID);
           }
@@ -274,7 +271,7 @@ public class ComicView extends Activity {
           Bitmap image= BitmapFactory.decodeStream(bi);
           FileOutputStream ostream= new FileOutputStream(file);
           BufferedOutputStream bo= new BufferedOutputStream(ostream);
-          image.compress(CompressFormat.PNG, 50, bo);
+          image.compress(CompressFormat.PNG, 100, bo);
           bi.close();
           bo.close();
           ostream.close();
@@ -310,7 +307,11 @@ public class ComicView extends Activity {
           builder.setCancelable(true);
           builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
-              // do nothing, hope it cancels
+              thisContext.finish();
+            }
+          });
+          builder.setOnCancelListener(new OnCancelListener() {
+            public void onCancel(DialogInterface dialog) {
               thisContext.finish();
             }
           });
