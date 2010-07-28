@@ -1,3 +1,21 @@
+/*
+ * Copyright (C) 2010  Alex Avance
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
+ * 1307, USA.
+ */
 package com.rada.xkcd;
 
 import android.graphics.Matrix;
@@ -12,7 +30,7 @@ import android.widget.ImageView.ScaleType;
 
 public class ImageViewTouchListener implements OnTouchListener {
   
-  private Matrix matrix= new Matrix();
+  private Matrix matrix= null;
   private Matrix lastMatrix= new Matrix();
   private Matrix savedMatrix= new Matrix();
   
@@ -62,6 +80,12 @@ public class ImageViewTouchListener implements OnTouchListener {
     final float minScaleY= viewHeight / intrinsicHeight;
     final float minScale= (minScaleX < minScaleY) ? minScaleX : minScaleY;
     final float maxScale= 2f * ((minScaleX < minScaleY) ? minScaleY : minScaleX);
+    
+    if (matrix == null) {
+      matrix= new Matrix();
+      matrix.setScale(minScale, minScale);
+      lastMatrix.set(matrix);
+    }
 
     switch (event.getAction() & MotionEvent.ACTION_MASK) {
       case MotionEvent.ACTION_DOWN: {

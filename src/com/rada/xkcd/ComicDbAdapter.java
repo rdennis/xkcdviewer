@@ -209,15 +209,15 @@ public class ComicDbAdapter {
    * @throws SQLException if the comic could not be found
    */
   public Cursor fetchComic(long number) throws SQLException {
-    Cursor mCursor= 
+    Cursor cursor= 
       database.query(true, DATABASE_TABLE, ALL_COLUMNS,
                 KEY_NUMBER + "=" + number,
                 null, null, null, null, null);
 
-    if (mCursor != null)
-      mCursor.moveToFirst();
+    if (cursor != null)
+      cursor.moveToFirst();
 
-    return mCursor;
+    return cursor;
   }
 
   /**
@@ -240,7 +240,7 @@ public class ComicDbAdapter {
       long number= cursor.getLong(cursor.getColumnIndexOrThrow(KEY_MAXNUMBER));
   
       // odd, I know, this is used to normalize the column names
-      return fetchComic(number);
+      return (number > 0) ? fetchComic(number) : null;
     } catch (SQLException e) {
       throw e;
     }
@@ -308,7 +308,7 @@ public class ComicDbAdapter {
     DataInputStream page= new DataInputStream(bi);
 
     String line= null;
-    for (int i= 0; i <= 77 && page.available() > 0; ++i) {
+    for (int i= 0; i <= 75 && page.available() > 0; ++i) {
       line= page.readLine();
     }
 
@@ -318,14 +318,21 @@ public class ComicDbAdapter {
             textPattern= Pattern.compile("(?<=title=\").*?(?=\")");
     Matcher m;
     m= urlPattern.matcher(line);
-    if (m.find()) {
-      url= Html.fromHtml(m.group()).toString();
-      m= textPattern.matcher(line);
-      if (m.find()) {
-        text= Html.fromHtml(m.group()).toString();
-        return updateComic(number, text, url);
-      } else
+    
+    if (!m.find()) {
+      for (int i= 0; i < 2; ++i) {
+        line= page.readLine();
+      }
+      m= urlPattern.matcher(line);
+      if (!m.find())
         return false;
+    }
+
+    url= Html.fromHtml(m.group()).toString();
+    m= textPattern.matcher(line);
+    if (m.find()) {
+      text= Html.fromHtml(m.group()).toString();
+      return updateComic(number, text, url);
     } else
       return false;
   }
@@ -374,7 +381,7 @@ public class ComicDbAdapter {
     long number= Long.MAX_VALUE;
     String title;
     Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
-            titlePattern= Pattern.compile("(?<=>).*?(?=<)");
+            titlePattern= Pattern.compile("(?<=>).*?(?=</a)");
     Matcher m;
     while (number > newest && archive.available() > 0) {
       line= archive.readLine();
@@ -386,6 +393,7 @@ public class ComicDbAdapter {
           if (m.find()) {
             title= Html.fromHtml(m.group()).toString();
             insertComic(number, title);
+            updateComic(number);
             for (int i= 0; i < 3; ++i)
               archive.readLine();
           }
