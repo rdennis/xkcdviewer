@@ -8,6 +8,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnTouchListener;
 import android.widget.ImageView;
+import android.widget.ImageView.ScaleType;
 
 public class ImageViewTouchListener implements OnTouchListener {
   
@@ -19,34 +20,36 @@ public class ImageViewTouchListener implements OnTouchListener {
   private PointF start= new PointF();
   private PointF lastPoint= new PointF();
 
-  private boolean moved;
   private float oldDist;
+  private float distanceMoved;
   
   public static final int NONE= 0;
   public static final int DRAG= 1;
   public static final int ZOOM= 2;
+
+  private static final float CLICK_MOVE_TOLERANCE= 2f; // pixels
+  private static final int CLICK_TIME_TOLERANCE= 200;  // milliseconds
   
   private int mode;
   
   private static final String TAG= "ImageViewTouchListener";
   
   private float spacing(MotionEvent event) {
-    float x = event.getX(0) - event.getX(1);
-    float y = event.getY(0) - event.getY(1);
+    float x= event.getX(0) - event.getX(1);
+    float y= event.getY(0) - event.getY(1);
     return FloatMath.sqrt(x * x + y * y);
  }
   
   private void midPoint(PointF point, MotionEvent event) {
-    float x = event.getX(0) + event.getX(1);
-    float y = event.getY(0) + event.getY(1);
+    float x= event.getX(0) + event.getX(1);
+    float y= event.getY(0) + event.getY(1);
     point.set(x / 2, y / 2);
   }
-
-  long startTime;
   
   @Override
   public boolean onTouch(View v, MotionEvent event) {
     ImageView view= (ImageView) v;
+    view.setScaleType(ScaleType.MATRIX);
     
     if (!view.hasFocus())
       view.requestFocus();
@@ -58,16 +61,15 @@ public class ImageViewTouchListener implements OnTouchListener {
     final float minScaleX= viewWidth / intrinsicWidth;
     final float minScaleY= viewHeight / intrinsicHeight;
     final float minScale= (minScaleX < minScaleY) ? minScaleX : minScaleY;
-    final float maxScale= 4f; // or instead: 2f * ((minScaleX > minScaleY) ? minScaleX : minScaleY);
+    final float maxScale= 2f * ((minScaleX < minScaleY) ? minScaleY : minScaleX);
 
     switch (event.getAction() & MotionEvent.ACTION_MASK) {
       case MotionEvent.ACTION_DOWN: {
-        moved= false;
         savedMatrix.set(matrix);
         start.set(event.getX(), event.getY());
         mode= DRAG;
         lastPoint.set(event.getX(), event.getY());
-        startTime= event.getEventTime();
+        distanceMoved= 0f;
         return false;
       }
       case MotionEvent.ACTION_POINTER_DOWN: {
@@ -82,13 +84,14 @@ public class ImageViewTouchListener implements OnTouchListener {
       case MotionEvent.ACTION_POINTER_UP:
       case MotionEvent.ACTION_UP: {
         mode= NONE;
-        long thisTime= event.getEventTime();
-        if (thisTime - startTime < 150)
-          return false;
-        return moved;
+        boolean isClickTime= (event.getDownTime() - event.getEventTime() < CLICK_TIME_TOLERANCE);
+        boolean isClickDistance= distanceMoved < CLICK_MOVE_TOLERANCE;
+        boolean isClick= isClickTime && isClickDistance;
+        
+        // if it's valid as a click, we actually need to return false so we don't swallow the event
+        return !isClick;
       }
       case MotionEvent.ACTION_MOVE: {
-        moved= true;
         if (mode == DRAG) {
           matrix.set(lastMatrix);
           matrix.postTranslate(event.getX() - lastPoint.x, event.getY() - lastPoint.y);
@@ -150,10 +153,17 @@ public class ImageViewTouchListener implements OnTouchListener {
     if (transY < minY)
       matrix.postTranslate(0, minY - transY);
     
+    distanceMoved+= distance(lastPoint, event);
     lastPoint.set(event.getX(), event.getY());
     lastMatrix.set(matrix);
     view.setImageMatrix(matrix);
     
     return true;
-  }  
+  }
+  
+  float distance(PointF point, MotionEvent event) {
+    float x= point.x - event.getX();
+    float y= point.y - event.getY();
+    return FloatMath.sqrt(x * x + y * y);
+  }
 }
