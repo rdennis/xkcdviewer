@@ -378,6 +378,7 @@ public class ComicDbAdapter {
     Cursor mostRecentCursor= fetchMostRecentComic();
     long newest= (mostRecentCursor != null) ?
         mostRecentCursor.getLong(mostRecentCursor.getColumnIndexOrThrow(KEY_NUMBER)) + 1 : 1;
+    mostRecentCursor.close();
     long number= Long.MAX_VALUE;
     String title;
     Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),

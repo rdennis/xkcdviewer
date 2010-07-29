@@ -69,19 +69,19 @@ public class ComicList extends ListActivity {
 
     int today= now.get(Calendar.DAY_OF_YEAR);
     int weekday= now.get(Calendar.DAY_OF_WEEK);
-    int lastDay= (lastUpdate != null)? lastUpdate.get(Calendar.DAY_OF_YEAR) : -1;
+    int lastUpdateDay= (lastUpdate != null)? lastUpdate.get(Calendar.DAY_OF_YEAR) : -1;
 
     // This is a mess, I'm aware of that, but it makes it only update if it's necessary
     if (// if it's update day and last update wasn't today
         ((weekday == Calendar.MONDAY || weekday == Calendar.WEDNESDAY || weekday == Calendar.FRIDAY) &&
-         (today != lastDay)) ||
+         (today != lastUpdateDay)) ||
          
         // if it's not update day but it wasn't updated yesterday
         ((weekday == Calendar.TUESDAY || weekday == Calendar.THURSDAY || weekday == Calendar.SATURDAY) &&
-         (Math.abs(today - lastDay) > 1)) ||
+         (Math.abs(today - lastUpdateDay) > 1)) ||
          
         // if it's Sunday and it wasn't updated Friday or Saturday
-        ((weekday == Calendar.SUNDAY) && (Math.abs(today - lastDay) > 2))
+        ((weekday == Calendar.SUNDAY) && (Math.abs(today - lastUpdateDay) > 2))
        ) {
       showDialog(UPDATE_DIALOGID);
       updateExecutor.execute(new Updater());
@@ -260,15 +260,15 @@ public class ComicList extends ListActivity {
   }
   
   private synchronized void populateList() {
-    Cursor cursor= dbAdapter.fetchAllComics();
-    startManagingCursor(cursor);
+    Cursor comics= dbAdapter.fetchAllComics();
+    startManagingCursor(comics);
     
     String[] from= new String[] { Comics.KEY_NUMBER, Comics.KEY_TITLE };
     int [] to= new int[] { R.id.row_number, R.id.row_title };
     
-    SimpleCursorAdapter comics=
-      new SimpleCursorAdapter(this, R.layout.comic_row, cursor, from, to);
-    setListAdapter(comics);
+    SimpleCursorAdapter adapter=
+      new SimpleCursorAdapter(this, R.layout.comic_row, comics, from, to);
+    setListAdapter(adapter);
   }
   
   private class Updater implements Runnable {
