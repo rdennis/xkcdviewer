@@ -46,6 +46,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnFocusChangeListener;
+import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -130,7 +131,7 @@ public class ComicView extends Activity {
       @Override
       public void onClick(View view) {
         long newNumber= Long.parseLong(comicText.getText().toString());
-        if (newNumber > 0 && newNumber <= maxNumber)
+        if (newNumber > 0 && newNumber <= maxNumber && newNumber != 404)
           comicNumber= newNumber;
         updateDisplay();
       }
@@ -141,7 +142,8 @@ public class ComicView extends Activity {
         if (comicNumber.equals(maxNumber))
           comicNumber= 1l;
         else
-          ++comicNumber;
+          if (++comicNumber == 404)
+            ++comicNumber;
         updateDisplay();
       }
     });
@@ -151,7 +153,8 @@ public class ComicView extends Activity {
         if (comicNumber.equals(1l))
           comicNumber= maxNumber;
         else
-          --comicNumber;
+          if (--comicNumber == 404)
+            --comicNumber;
         updateDisplay();
       }
     });
@@ -207,6 +210,7 @@ public class ComicView extends Activity {
             thisContext.finish();
           }
         });
+        dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
         return dialog;
       }
       case HOVERTEXT_DIALOGID: {
@@ -217,6 +221,8 @@ public class ComicView extends Activity {
             dbHelper.updateComic(comicNumber);
             cursor= dbHelper.fetchComic(comicNumber);
             text= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TEXT));
+          } catch (MalformedURLException e) {
+            text= "Big error connecting to update hover text. Please email the developer";
           } catch (IOException e) {
             text= "Could not connect to update comic hover text.";
           }
