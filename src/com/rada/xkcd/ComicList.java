@@ -87,6 +87,7 @@ public class ComicList extends ListActivity {
       updateExecutor.execute(new Updater());
     }
     
+    populateList();
     registerForContextMenu(getListView());
   }
 
@@ -98,7 +99,6 @@ public class ComicList extends ListActivity {
   @Override
   public void onStart() {
     super.onStart();
-    populateList();
   }
   
   @Override
@@ -312,7 +312,6 @@ public class ComicList extends ListActivity {
     switch (status) {
       case Comics.STATUS_SUCCESS: {
         message= Toast.makeText(this, R.string.update_success, Toast.LENGTH_SHORT);
-        populateList();
         lastUpdate= Calendar.getInstance();
       } break;
       case Comics.STATUS_FAILURE: {
@@ -328,6 +327,7 @@ public class ComicList extends ListActivity {
         message= Toast.makeText(this, "Unkown update status: " + status, Toast.LENGTH_LONG);
       }
     }
+    populateList();
     message.show();
   }
 }
