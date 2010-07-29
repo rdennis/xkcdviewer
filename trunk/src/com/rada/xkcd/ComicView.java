@@ -86,6 +86,7 @@ public class ComicView extends Activity {
 
     Cursor cursor= dbHelper.fetchMostRecentComic();
     maxNumber= cursor.getLong(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
+    cursor.close();
     
     comicNumber= (savedInstanceState == null) ? null :
       (Long) savedInstanceState.getSerializable(Comics.KEY_NUMBER);
@@ -110,7 +111,7 @@ public class ComicView extends Activity {
         EditText view= (EditText) v;
         
         if (!hasFocus) {
-          InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+          InputMethodManager imm= (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
           imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         } else {
           view.selectAll();
@@ -138,7 +139,7 @@ public class ComicView extends Activity {
     });
     
     nextButton.setOnClickListener(new OnClickListener() {
-      public void onClick(View arg0) {
+      public void onClick(View view) {
         if (comicNumber.equals(maxNumber))
           comicNumber= 1l;
         else
@@ -149,7 +150,7 @@ public class ComicView extends Activity {
     });
 
     prevButton.setOnClickListener(new OnClickListener() {
-      public void onClick(View arg0) {
+      public void onClick(View view) {
         if (comicNumber.equals(1l))
           comicNumber= maxNumber;
         else
@@ -252,6 +253,7 @@ public class ComicView extends Activity {
     
     Cursor cursor= dbHelper.fetchComic(comicNumber);
     String newTitle= comicNumber + ". " + cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TITLE));
+    cursor.close();
     setTitle(newTitle);
     
     File file= new File(Comics.SD_DIR_PATH + comicNumber);
@@ -260,8 +262,11 @@ public class ComicView extends Activity {
       executor.execute(new ImageGetter());
     } else {
       try {
-        BufferedInputStream bi= new BufferedInputStream(new FileInputStream(file));
+        FileInputStream istream= new FileInputStream(file);
+        BufferedInputStream bi= new BufferedInputStream(istream);
         BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(bi));
+        bi.close();
+        istream.close();
         comicImage.setImageDrawable(drawable);
         comicImage.setScaleType(ScaleType.FIT_START);
         comicImage.setOnTouchListener(new ImageViewTouchListener());
@@ -272,6 +277,10 @@ public class ComicView extends Activity {
         });
       } catch (FileNotFoundException e) {
         // the file got deleted between exist check and file open, try it again
+        updateDisplay();
+      } catch (IOException e) {
+        // something happened in the flushing of the streams perhaps?
+        // this may be where my unknown force close was coming from
         updateDisplay();
       }
     }
@@ -302,6 +311,7 @@ public class ComicView extends Activity {
           FileOutputStream ostream= new FileOutputStream(file);
           BufferedOutputStream bo= new BufferedOutputStream(ostream);
           image.compress(CompressFormat.PNG, 100, bo);
+          cursor.close();
           bi.close();
           bo.close();
           ostream.close();
