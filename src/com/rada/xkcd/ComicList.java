@@ -36,7 +36,6 @@ import android.os.Bundle;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView.AdapterContextMenuInfo;
@@ -53,7 +52,6 @@ public class ComicList extends ListActivity {
   private ComicDbAdapter dbAdapter;
   private static Calendar lastUpdate;
   private ExecutorService updateExecutor;
-  private MenuInflater inflater= new MenuInflater(this);
   
   /** Called when the activity is first created. */
   @Override
@@ -132,7 +130,7 @@ public class ComicList extends ListActivity {
   @Override
   public boolean onCreateOptionsMenu(Menu menu) {
     super.onCreateOptionsMenu(menu);
-    inflater.inflate(R.menu.selector_menu, menu);
+    getMenuInflater().inflate(R.menu.selector_menu, menu);
     return true;
   }
   
@@ -141,7 +139,7 @@ public class ComicList extends ListActivity {
     super.onCreateContextMenu(menu, v, menuInfo);
     
     AdapterContextMenuInfo info= (AdapterContextMenuInfo) menuInfo;
-    inflater.inflate(R.menu.selector_context, menu);
+    getMenuInflater().inflate(R.menu.selector_context, menu);
 
     File file= new File("/sdcard/xkcd/" + info.id);
     if (file.exists()) {

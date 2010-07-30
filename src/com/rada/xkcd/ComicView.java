@@ -42,25 +42,28 @@ import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnFocusChangeListener;
-import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
+import android.widget.Toast;
 
 public class ComicView extends Activity {
   
+  private static final int BUFFER_SIZE= 10000;
+
   private final Activity thisContext= this;
   
   private static final int HOVERTEXT_DIALOGID= 800;
   private static final int DOWNLOAD_DIALOGID= 801;
 
-  private ComicDbAdapter dbHelper;
+  private volatile ComicDbAdapter dbHelper;
   private volatile Long comicNumber= null;
   private long maxNumber;
   
@@ -211,7 +214,7 @@ public class ComicView extends Activity {
             thisContext.finish();
           }
         });
-        dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+//        dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
         return dialog;
       }
       case HOVERTEXT_DIALOGID: {
@@ -223,10 +226,11 @@ public class ComicView extends Activity {
             cursor= dbHelper.fetchComic(comicNumber);
             text= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TEXT));
           } catch (MalformedURLException e) {
-            text= "Big error connecting to update hover text. Please email the developer";
+            text= "Big error connecting to update hover text. Please email the developer.";
           } catch (IOException e) {
             text= "Could not connect to update comic hover text.";
           }
+        cursor.close();
         AlertDialog.Builder builder= new AlertDialog.Builder(thisContext);
         builder.setCancelable(true);
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -263,7 +267,7 @@ public class ComicView extends Activity {
     } else {
       try {
         FileInputStream istream= new FileInputStream(file);
-        BufferedInputStream bi= new BufferedInputStream(istream);
+        BufferedInputStream bi= new BufferedInputStream(istream, BUFFER_SIZE);
         BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(bi));
         bi.close();
         istream.close();
@@ -279,14 +283,15 @@ public class ComicView extends Activity {
         // the file got deleted between exist check and file open, try it again
         updateDisplay();
       } catch (IOException e) {
-        // something happened in the flushing of the streams perhaps?
-        // this may be where my unknown force close was coming from
         updateDisplay();
       }
     }
   }
   
-  private class ImageGetter implements Runnable {    
+  private class ImageGetter implements Runnable {
+
+    private static final int MAX_DOWNLOAD_ATTEMPTS= 99;
+
     @Override
     public void run() {
       int result;
@@ -295,33 +300,53 @@ public class ComicView extends Activity {
           Comics.SD_DIR.mkdirs();
         
         File file= new File(Comics.SD_DIR_PATH + comicNumber);
-        
-        synchronized(comicNumber) {
-          Cursor cursor= dbHelper.fetchComic(comicNumber);
-          String url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
-          
-          if (url == null) {
-            dbHelper.updateComic(comicNumber);
-            cursor= dbHelper.fetchComic(comicNumber);
-            url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
-          }
-          
-          BufferedInputStream bi= new BufferedInputStream(Comics.download(url));
-          Bitmap image= BitmapFactory.decodeStream(bi);
-          FileOutputStream ostream= new FileOutputStream(file);
-          BufferedOutputStream bo= new BufferedOutputStream(ostream);
-          image.compress(CompressFormat.PNG, 100, bo);
-          cursor.close();
-          bi.close();
-          bo.close();
-          ostream.close();
+
+        if (dbHelper == null) {
+          Toast.makeText(thisContext, "dbHelper null", Toast.LENGTH_SHORT);
+          while (dbHelper == null);
+          Toast.makeText(thisContext, "dbHelper no longer null", Toast.LENGTH_LONG);
+        }
+
+        if (comicNumber == null) {
+          Toast.makeText(thisContext, "comicNumber null", Toast.LENGTH_SHORT);
+          while (comicNumber == null);
+          Toast.makeText(thisContext, "comicNumber no longer null", Toast.LENGTH_LONG);
         }
         
+        Cursor cursor= dbHelper.fetchComic(comicNumber);
+        String url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
+
+        if (url == null) {
+          dbHelper.updateComic(comicNumber);
+          cursor= dbHelper.fetchComic(comicNumber);
+          url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
+        }
+        cursor.close();
+
+        Bitmap image= null;
+        for (int i= 0; i < MAX_DOWNLOAD_ATTEMPTS && image == null; ++i) {
+          // I'm not using a buffered input stream because it has in the past
+          // caused more download issues than it's worth for the performance boost
+          image= BitmapFactory.decodeStream(Comics.download(url));
+        }
+        if (image == null)
+          throw new Exception("image is null");
+        
+        FileOutputStream ostream= new FileOutputStream(file);
+        BufferedOutputStream bo= new BufferedOutputStream(ostream, BUFFER_SIZE);
+        image.compress(CompressFormat.PNG, 100, bo);
+        bo.close();
+        ostream.close();
+
         result= Comics.STATUS_SUCCESS;
       } catch (MalformedURLException e) {
         result= Comics.STATUS_ERROR;
       } catch (IOException e) {
         result= Comics.STATUS_FAILURE;
+      } catch (Exception e) {
+        result= Comics.STATUS_FAILURE;
+        Log.d("ComicView", Log.getStackTraceString(e));
+        Log.e("ComicView", "image was still null after " + MAX_DOWNLOAD_ATTEMPTS + " attempts.");
       }
       
       runOnUiThread(new ImageGottenFinisher(result));
