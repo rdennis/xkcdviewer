@@ -40,6 +40,7 @@ import android.util.Log;
 
 public class ComicDbAdapter {
 
+  private static final int BUFFER_SIZE= 10000;
   private static final String KEY_NUMBER= Comics.KEY_NUMBER;
   private static final String KEY_TITLE= Comics.KEY_TITLE;
   private static final String KEY_TEXT= Comics.KEY_TEXT;
@@ -238,6 +239,7 @@ public class ComicDbAdapter {
         cursor.moveToFirst();
       }
       long number= cursor.getLong(cursor.getColumnIndexOrThrow(KEY_MAXNUMBER));
+      cursor.close();
   
       // odd, I know, this is used to normalize the column names
       return (number > 0) ? fetchComic(number) : null;
@@ -304,7 +306,7 @@ public class ComicDbAdapter {
    * @throws IOException if the connection fails
    */
   public boolean updateComic(long number) throws MalformedURLException, IOException {
-    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.MAIN_URL + number + "/index.html"));
+    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.MAIN_URL + number + "/index.html"), BUFFER_SIZE);
     DataInputStream page= new DataInputStream(bi);
 
     String line= null;
@@ -366,7 +368,7 @@ public class ComicDbAdapter {
    * @throws IOException if the connection fails
    */
   public synchronized void updateList() throws MalformedURLException, IOException {
-    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.ARCHIVE_URL));
+    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.ARCHIVE_URL), BUFFER_SIZE);
     DataInputStream archive= new DataInputStream(bi);
 
     String line;
@@ -378,7 +380,8 @@ public class ComicDbAdapter {
     Cursor mostRecentCursor= fetchMostRecentComic();
     long newest= (mostRecentCursor != null) ?
         mostRecentCursor.getLong(mostRecentCursor.getColumnIndexOrThrow(KEY_NUMBER)) + 1 : 1;
-    mostRecentCursor.close();
+    if (mostRecentCursor != null)
+      mostRecentCursor.close();
     long number= Long.MAX_VALUE;
     String title;
     Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
