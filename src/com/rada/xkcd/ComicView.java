@@ -44,6 +44,8 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnFocusChangeListener;
@@ -75,7 +77,7 @@ public class ComicView extends Activity {
   
   private ExecutorService executor;
   
-//  private static final String TAG= "ComicView";
+  private static final String TAG= "ComicView";
   
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -200,6 +202,26 @@ public class ComicView extends Activity {
   @Override
   public void onDestroy() {
     super.onDestroy();
+  }
+  
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    super.onCreateOptionsMenu(menu);
+    getMenuInflater().inflate(R.menu.viewer_menu, menu);
+    return true;
+  }
+  
+  @Override
+  public boolean onMenuItemSelected(int featureId, MenuItem item) {
+    switch(item.getItemId()) {
+      case R.id.menu_hover: {
+        showDialog(HOVERTEXT_DIALOGID);
+        return true;
+      }
+      default: {
+        return super.onMenuItemSelected(featureId, item);
+      }
+    }
   }
   
   @Override
@@ -345,8 +367,8 @@ public class ComicView extends Activity {
         result= Comics.STATUS_FAILURE;
       } catch (Exception e) {
         result= Comics.STATUS_FAILURE;
-        Log.d("ComicView", Log.getStackTraceString(e));
-        Log.e("ComicView", "image was still null after " + MAX_DOWNLOAD_ATTEMPTS + " attempts.");
+        Log.d(TAG, Log.getStackTraceString(e));
+        Log.e(TAG, "image was still null after " + MAX_DOWNLOAD_ATTEMPTS + " attempts.");
       }
       
       runOnUiThread(new ImageGottenFinisher(result));

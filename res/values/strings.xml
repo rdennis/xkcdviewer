@@ -42,6 +42,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     <string name="menu_markfavorite">Mark as favorite</string>
     <string name="menu_unfavorite">Unfavorite</string>
     <string name="menu_markunfavorite">Unmark as favorite</string>
+    <string name="menu_hover">Hover Text</string>
     
     <string name="button_next">&#160;&gt;&#160;</string>
     <string name="button_prev">&#160;&lt;&#160;</string>

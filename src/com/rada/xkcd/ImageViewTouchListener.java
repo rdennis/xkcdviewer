@@ -45,8 +45,8 @@ public class ImageViewTouchListener implements OnTouchListener {
   public static final int DRAG= 1;
   public static final int ZOOM= 2;
 
-  private static final float CLICK_MOVE_TOLERANCE= 2f; // pixels
-  private static final int CLICK_TIME_TOLERANCE= 200;  // milliseconds
+  private static final float CLICK_MOVE_TOLERANCE= 3f; // pixels
+  private static final int CLICK_TIME_TOLERANCE= 300;  // milliseconds
   
   private int mode;
   
@@ -79,7 +79,7 @@ public class ImageViewTouchListener implements OnTouchListener {
     final float minScaleX= viewWidth / intrinsicWidth;
     final float minScaleY= viewHeight / intrinsicHeight;
     final float minScale= (minScaleX < minScaleY) ? minScaleX : minScaleY;
-    final float maxScale= 2f * ((minScaleX < minScaleY) ? minScaleY : minScaleX);
+    final float maxScale= 5f + ((minScaleX < minScaleY) ? minScaleY : minScaleX);
     
     if (matrix == null) {
       matrix= new Matrix();
@@ -108,7 +108,7 @@ public class ImageViewTouchListener implements OnTouchListener {
       case MotionEvent.ACTION_POINTER_UP:
       case MotionEvent.ACTION_UP: {
         mode= NONE;
-        boolean isClickTime= (event.getDownTime() - event.getEventTime() < CLICK_TIME_TOLERANCE);
+        boolean isClickTime= (event.getEventTime() - event.getDownTime() < CLICK_TIME_TOLERANCE);
         boolean isClickDistance= distanceMoved < CLICK_MOVE_TOLERANCE;
         boolean isClick= isClickTime && isClickDistance;
         
