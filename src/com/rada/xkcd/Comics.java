@@ -24,8 +24,12 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public final class Comics {
+  
+  public static final Executor BACKGROUND_EXECUTOR= Executors.newSingleThreadExecutor();
   
   public static final String ACTION_VIEW= "com.rada.xkcd.action.VIEW";
   public static final String ACTION_DOWNLOAD= "com.rada.xkcd.action.DOWNLOAD";

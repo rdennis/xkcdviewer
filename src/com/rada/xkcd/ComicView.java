@@ -26,8 +26,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -75,8 +73,6 @@ public class ComicView extends Activity {
   private Button prevButton;
   private ImageView comicImage;
   
-  private ExecutorService executor;
-  
   private static final String TAG= "ComicView";
   
   @Override
@@ -86,8 +82,6 @@ public class ComicView extends Activity {
     
     dbHelper= new ComicDbAdapter(this);
     dbHelper.open();
-    
-    executor= Executors.newSingleThreadExecutor();
 
     Cursor cursor= dbHelper.fetchMostRecentComic();
     maxNumber= cursor.getLong(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
@@ -285,7 +279,7 @@ public class ComicView extends Activity {
     File file= new File(Comics.SD_DIR_PATH + comicNumber);
     if (file.length() == 0) {
       showDialog(DOWNLOAD_DIALOGID);
-      executor.execute(new ImageGetter());
+      Comics.BACKGROUND_EXECUTOR.execute(new ImageGetter());
     } else {
       try {
         FileInputStream istream= new FileInputStream(file);
