@@ -22,8 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.Calendar;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import android.app.Dialog;
 import android.app.ListActivity;
@@ -37,8 +35,10 @@ import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView.AdapterContextMenuInfo;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
@@ -51,7 +51,6 @@ public class ComicList extends ListActivity {
 
   private ComicDbAdapter dbAdapter;
   private static Calendar lastUpdate;
-  private ExecutorService updateExecutor;
   
   /** Called when the activity is first created. */
   @Override
@@ -60,8 +59,6 @@ public class ComicList extends ListActivity {
     setContentView(R.layout.comic_list);
     dbAdapter= new ComicDbAdapter(this);
     dbAdapter.open();
-    
-    updateExecutor= Executors.newSingleThreadExecutor();
 
     Calendar now= Calendar.getInstance();
 
@@ -82,51 +79,13 @@ public class ComicList extends ListActivity {
         ((weekday == Calendar.SUNDAY) && (Math.abs(today - lastUpdateDay) > 2))
        ) {
       showDialog(UPDATE_DIALOGID);
-      updateExecutor.execute(new Updater());
+      Comics.BACKGROUND_EXECUTOR.execute(new Updater());
     }
     
     populateList();
     registerForContextMenu(getListView());
   }
 
-  @Override
-  public void onRestart() {
-    super.onRestart();
-  }
-  
-  @Override
-  public void onStart() {
-    super.onStart();
-  }
-  
-  @Override
-  public void onResume() {
-    super.onResume();
-  }
-
-  @Override
-  protected void onSaveInstanceState(Bundle outState) {
-    super.onSaveInstanceState(outState);
-  }
-  
-  @Override
-  public void onPause() {
-    super.onPause();
-  }
-  
-  @Override 
-  public void onStop() {
-    super.onStop();
-  }
-  
-  @Override
-  public void onDestroy() {
-    super.onDestroy();
-    if (isFinishing()) {
-      dbAdapter= null;
-    }
-  }
-  
   @Override
   public boolean onCreateOptionsMenu(Menu menu) {
     super.onCreateOptionsMenu(menu);
@@ -213,11 +172,21 @@ public class ComicList extends ListActivity {
         return true;
       }
       case R.id.menu_favorite: {
-        dbAdapter.updateComic(info.id, true);
+        long time= Calendar.getInstance().getTimeInMillis();
+        MotionEvent downEvent= MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, 0, 0, 0);
+        MotionEvent upEvent= MotionEvent.obtain(time, time, MotionEvent.ACTION_UP, 0, 0, 0);
+        View target= info.targetView.findViewById(R.id.star);
+        target.dispatchTouchEvent(downEvent);
+        target.dispatchTouchEvent(upEvent);
         return true;
       }
       case R.id.menu_unfavorite: {
-        dbAdapter.updateComic(info.id, false);
+        long time= Calendar.getInstance().getTimeInMillis();
+        MotionEvent downEvent= MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, 0, 0, 0);
+        MotionEvent upEvent= MotionEvent.obtain(time, time, MotionEvent.ACTION_UP, 0, 0, 0);
+        View target= info.targetView.findViewById(R.id.star);
+        target.dispatchTouchEvent(downEvent);
+        target.dispatchTouchEvent(upEvent);
         return true;
       }
     }
@@ -242,11 +211,8 @@ public class ComicList extends ListActivity {
         dialog.setCancelable(true);
         dialog.setCanceledOnTouchOutside(true);
         dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-
-          @Override
           public void onCancel(DialogInterface dialog) {
             // TODO find a way to shutdown the thread on cancel
-            // updateExecutor.shutdownNow();
             // runOnUiThread(new UpdateFinisher(Comics.STATUS_CANCELLED));
           }
         });
@@ -261,11 +227,42 @@ public class ComicList extends ListActivity {
     Cursor comics= dbAdapter.fetchAllComics();
     startManagingCursor(comics);
     
-    String[] from= new String[] { Comics.KEY_NUMBER, Comics.KEY_TITLE };
-    int [] to= new int[] { R.id.row_number, R.id.row_title };
+    String[] from= new String[] { Comics.KEY_FAVORITE, Comics.KEY_NUMBER, Comics.KEY_TITLE };
+    int [] to= new int[] { R.id.star, R.id.row_number, R.id.row_title };
     
     SimpleCursorAdapter adapter=
       new SimpleCursorAdapter(this, R.layout.comic_row, comics, from, to);
+    adapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
+      public boolean setViewValue(View v, Cursor cursor, int columnIndex) {
+        if (columnIndex == cursor.getColumnIndexOrThrow(Comics.KEY_FAVORITE)) {
+          final ImageView imageView= (ImageView) v;
+          final long id= cursor.getLong(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
+          final boolean isFavorite= cursor.getLong(columnIndex) != 0;
+          if (isFavorite) {
+            imageView.setImageDrawable(getResources().getDrawable(android.R.drawable.star_big_on));
+          } else {
+            imageView.setImageDrawable(getResources().getDrawable(android.R.drawable.star_big_off));
+          }
+          imageView.setClickable(true);
+          imageView.setOnClickListener(new View.OnClickListener() {
+            private boolean isFavorited= isFavorite;
+            private ImageView view= imageView;
+            private long number= id;
+            public void onClick(View v) {
+              isFavorited= !isFavorited;
+              dbAdapter.updateComic(number, isFavorited);
+              if (isFavorited) {
+                view.setImageDrawable(getResources().getDrawable(android.R.drawable.star_big_on));
+              } else {
+                view.setImageDrawable(getResources().getDrawable(android.R.drawable.star_big_off));
+              }
+            }
+          });
+          return true;
+        }
+        return false;
+      }
+    });
     setListAdapter(adapter);
   }
   
