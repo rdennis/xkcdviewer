@@ -41,6 +41,7 @@ public class ComicDownloader extends Service {
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
     // TODO fill this thing out
+    onStart(intent, startId);
     return START_NOT_STICKY;
   }
 

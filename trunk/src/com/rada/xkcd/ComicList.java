@@ -48,6 +48,8 @@ public class ComicList extends ListActivity {
   final ListActivity thisContext= this;
   
   public static final int UPDATE_DIALOGID= 500;
+  
+  private boolean isFavoriteView;
 
   private ComicDbAdapter dbAdapter;
   private static Calendar lastUpdate;
@@ -56,6 +58,14 @@ public class ComicList extends ListActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    
+    Intent intent= getIntent();
+    if (intent == null) {
+      isFavoriteView= false;
+    } else {
+      isFavoriteView= intent.getAction().equals(Comics.ACTION_VIEW_FAVORITES);
+    }
+    
     setContentView(R.layout.comic_list);
     dbAdapter= new ComicDbAdapter(this);
     dbAdapter.open();
@@ -90,6 +100,7 @@ public class ComicList extends ListActivity {
   public boolean onCreateOptionsMenu(Menu menu) {
     super.onCreateOptionsMenu(menu);
     getMenuInflater().inflate(R.menu.selector_menu, menu);
+    menu.findItem(R.id.menu_favorites).setVisible(!isFavoriteView);
     return true;
   }
   
@@ -136,6 +147,11 @@ public class ComicList extends ListActivity {
         startActivity(intent);
         return true;
       }
+      case R.id.menu_favorites: {
+        Intent intent= new Intent(this, ComicList.class);
+        intent.setAction(Comics.ACTION_VIEW_FAVORITES);
+        startActivity(intent);
+      }
 //      case R.id.menu_search: {
 //      }
 //      case R.id.menu_settings: {
@@ -158,17 +174,32 @@ public class ComicList extends ListActivity {
         return true;
       }
       case R.id.menu_download: {
-        Intent intent= new Intent(this, ComicDownloader.class);
-        intent.setAction(Comics.ACTION_DOWNLOAD);
-        intent.putExtra(Comics.KEY_NUMBER, info.id);
-        startService(intent);
+        final long comicNumber= info.id;
+        Comics.BACKGROUND_EXECUTOR.execute(new Runnable() {
+          public void run() {
+            String statusText;
+            try {
+              Comics.downloadComic(comicNumber, dbAdapter);
+              statusText= "Downloaded comic " + comicNumber;
+            } catch (Exception e) {
+              statusText= "Failed to download comic " + comicNumber;
+            }
+            final String finalText= statusText;
+            runOnUiThread(new Runnable() {
+              public void run() {
+                Toast.makeText(thisContext, finalText, Toast.LENGTH_SHORT).show();
+              }
+            });
+          }
+        });
         return true;
       }
       case R.id.menu_clear: {
-        Intent intent= new Intent(this, ComicDownloader.class);
-        intent.setAction(Comics.ACTION_CLEAR);
-        intent.putExtra(Comics.KEY_NUMBER, info.id);
-        startService(intent);
+        File file= new File(Comics.SD_DIR_PATH + info.id);
+        if (file.exists()) {
+          file.delete();
+          Toast.makeText(thisContext, "Deleted comic number " + info.id, Toast.LENGTH_SHORT).show();
+        }
         return true;
       }
       case R.id.menu_favorite: {
@@ -224,7 +255,7 @@ public class ComicList extends ListActivity {
   }
   
   private synchronized void populateList() {
-    Cursor comics= dbAdapter.fetchAllComics();
+    Cursor comics= isFavoriteView ? dbAdapter.fetchFavoriteComics() : dbAdapter.fetchAllComics();
     startManagingCursor(comics);
     
     String[] from= new String[] { Comics.KEY_FAVORITE, Comics.KEY_NUMBER, Comics.KEY_TITLE };
@@ -239,9 +270,9 @@ public class ComicList extends ListActivity {
           final long id= cursor.getLong(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
           final boolean isFavorite= cursor.getLong(columnIndex) != 0;
           if (isFavorite) {
-            imageView.setImageDrawable(getResources().getDrawable(android.R.drawable.star_big_on));
+            imageView.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_on));
           } else {
-            imageView.setImageDrawable(getResources().getDrawable(android.R.drawable.star_big_off));
+            imageView.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_off));
           }
           imageView.setClickable(true);
           imageView.setOnClickListener(new View.OnClickListener() {
@@ -252,9 +283,9 @@ public class ComicList extends ListActivity {
               isFavorited= !isFavorited;
               dbAdapter.updateComic(number, isFavorited);
               if (isFavorited) {
-                view.setImageDrawable(getResources().getDrawable(android.R.drawable.star_big_on));
+                view.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_on));
               } else {
-                view.setImageDrawable(getResources().getDrawable(android.R.drawable.star_big_off));
+                view.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_off));
               }
             }
           });
