@@ -19,11 +19,9 @@
 package com.rada.xkcd;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 
@@ -35,8 +33,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
@@ -56,14 +52,14 @@ import android.widget.Toast;
 
 public class ComicView extends Activity {
   
-  private static final int BUFFER_SIZE= 10000;
+  private static final int BUFFER_SIZE= Comics.BUFFER_SIZE;
 
   private final Activity thisContext= this;
   
   private static final int HOVERTEXT_DIALOGID= 800;
   private static final int DOWNLOAD_DIALOGID= 801;
 
-  private volatile ComicDbAdapter dbHelper;
+  private volatile ComicDbAdapter dbAdapter;
   private volatile Long comicNumber= null;
   private long maxNumber;
   
@@ -80,10 +76,10 @@ public class ComicView extends Activity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.comic_view);
     
-    dbHelper= new ComicDbAdapter(this);
-    dbHelper.open();
+    dbAdapter= new ComicDbAdapter(this);
+    dbAdapter.open();
 
-    Cursor cursor= dbHelper.fetchMostRecentComic();
+    Cursor cursor= dbAdapter.fetchMostRecentComic();
     maxNumber= cursor.getLong(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
     cursor.close();
     
@@ -163,39 +159,9 @@ public class ComicView extends Activity {
   }
   
   @Override
-  public void onRestart() {
-    super.onRestart();
-  }
-  
-  @Override
-  public void onStart() {
-    super.onStart();
-  }
-  
-  @Override
-  public void onResume() {
-    super.onResume();
-  }
-  
-  @Override
   public void onSaveInstanceState(Bundle outState) {
     super.onSaveInstanceState(outState);
     outState.putLong(Comics.KEY_NUMBER, comicNumber);
-  }
-  
-  @Override
-  public void onPause() {
-    super.onPause();
-  }
-  
-  @Override
-  public void onStop() {
-    super.onStop();
-  }
-  
-  @Override
-  public void onDestroy() {
-    super.onDestroy();
   }
   
   @Override
@@ -234,12 +200,12 @@ public class ComicView extends Activity {
         return dialog;
       }
       case HOVERTEXT_DIALOGID: {
-        Cursor cursor= dbHelper.fetchComic(comicNumber);
+        Cursor cursor= dbAdapter.fetchComic(comicNumber);
         String text= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TEXT));
         if (text == null)
           try {
-            dbHelper.updateComic(comicNumber);
-            cursor= dbHelper.fetchComic(comicNumber);
+            dbAdapter.updateComic(comicNumber);
+            cursor= dbAdapter.fetchComic(comicNumber);
             text= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TEXT));
           } catch (MalformedURLException e) {
             text= "Big error connecting to update hover text. Please email the developer.";
@@ -271,7 +237,7 @@ public class ComicView extends Activity {
     comicText.setText(comicNumber.toString());
     comicText.clearFocus();
     
-    Cursor cursor= dbHelper.fetchComic(comicNumber);
+    Cursor cursor= dbAdapter.fetchComic(comicNumber);
     String newTitle= comicNumber + ". " + cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_TITLE));
     cursor.close();
     setTitle(newTitle);
@@ -314,14 +280,6 @@ public class ComicView extends Activity {
       try {
         if (!Comics.SD_DIR.exists())
           Comics.SD_DIR.mkdirs();
-        
-        File file= new File(Comics.SD_DIR_PATH + comicNumber);
-
-        if (dbHelper == null) {
-          Toast.makeText(thisContext, "dbHelper null", Toast.LENGTH_SHORT);
-          while (dbHelper == null);
-          Toast.makeText(thisContext, "dbHelper no longer null", Toast.LENGTH_LONG);
-        }
 
         if (comicNumber == null) {
           Toast.makeText(thisContext, "comicNumber null", Toast.LENGTH_SHORT);
@@ -329,30 +287,7 @@ public class ComicView extends Activity {
           Toast.makeText(thisContext, "comicNumber no longer null", Toast.LENGTH_LONG);
         }
         
-        Cursor cursor= dbHelper.fetchComic(comicNumber);
-        String url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
-
-        if (url == null) {
-          dbHelper.updateComic(comicNumber);
-          cursor= dbHelper.fetchComic(comicNumber);
-          url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.KEY_URL));
-        }
-        cursor.close();
-
-        Bitmap image= null;
-        for (int i= 0; i < MAX_DOWNLOAD_ATTEMPTS && image == null; ++i) {
-          // I'm not using a buffered input stream because it has in the past
-          // caused more download issues than it's worth for the performance boost
-          image= BitmapFactory.decodeStream(Comics.download(url));
-        }
-        if (image == null)
-          throw new Exception("image is null");
-        
-        FileOutputStream ostream= new FileOutputStream(file);
-        BufferedOutputStream bo= new BufferedOutputStream(ostream, BUFFER_SIZE);
-        image.compress(CompressFormat.PNG, 100, bo);
-        bo.close();
-        ostream.close();
+        Comics.downloadComic(comicNumber, dbAdapter);
 
         result= Comics.STATUS_SUCCESS;
       } catch (MalformedURLException e) {

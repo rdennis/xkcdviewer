@@ -66,7 +66,7 @@ public class ComicDbAdapter {
     KEY_URL + " text, " +
     KEY_FAVORITE + " boolean );";
 
-  private final Context mContext;
+  private final Context thisContext;
 
   private static class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -94,7 +94,7 @@ public class ComicDbAdapter {
    * @param context context within which to work
    */
   public ComicDbAdapter(Context context) {
-    mContext= context;
+    thisContext= context;
     boolean exists= checkDatabase(DATABASE_NAME);
     
     if (!exists)
@@ -112,7 +112,7 @@ public class ComicDbAdapter {
    * @return true if it already exists, false otherwise
    */
   private boolean checkDatabase(String database) {
-    File file= mContext.getDatabasePath(database).getAbsoluteFile();
+    File file= thisContext.getDatabasePath(database).getAbsoluteFile();
     return file.exists();
   }
   
@@ -125,9 +125,9 @@ public class ComicDbAdapter {
    */
   private void copyDatabase(String database) throws IOException {
     
-    InputStream myInput = mContext.getAssets().open(database);
+    InputStream myInput = thisContext.getAssets().open(database);
 
-    String path = mContext.getDatabasePath(database).getAbsolutePath();
+    String path = thisContext.getDatabasePath(database).getAbsolutePath();
 
     File dir= new File(path.substring(0, path.lastIndexOf(File.separatorChar)));
     File file= new File(path);
@@ -161,7 +161,7 @@ public class ComicDbAdapter {
    * @throws SQLException if the opening/creation of the database fails
    */
   public ComicDbAdapter open() throws SQLException {
-    dbHelper= new DatabaseHelper(mContext);
+    dbHelper= new DatabaseHelper(thisContext);
     database= dbHelper.getWritableDatabase();
     return this;
   }
@@ -193,12 +193,26 @@ public class ComicDbAdapter {
    * Return a cursor over all the comics in the database. The comics are in
    * descending order by number.
    * 
-   * @return Cursor over all the notes
+   * @return Cursor over all the comics
    */
   public Cursor fetchAllComics() {
     return database.query(DATABASE_TABLE,
         ALL_COLUMNS,
         null, null, null, null,
+        KEY_NUMBER + " DESC");
+  }
+  
+  /**
+   * Return a cursor over the favorited comics. The comics are in
+   * descending order by number.
+   * 
+   * @return Cursor over all the comics
+   */
+  public Cursor fetchFavoriteComics() {
+    return database.query(DATABASE_TABLE,
+        ALL_COLUMNS,
+        KEY_FAVORITE + "=1",
+        null, null, null,
         KEY_NUMBER + " DESC");
   }
 

@@ -18,7 +18,9 @@
  */
 package com.rada.xkcd;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -27,6 +29,13 @@ import java.net.URL;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import android.content.Context;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
+import android.graphics.BitmapFactory;
+import android.widget.Toast;
+
 public final class Comics {
   
   public static final Executor BACKGROUND_EXECUTOR= Executors.newSingleThreadExecutor();
@@ -34,6 +43,7 @@ public final class Comics {
   public static final String ACTION_VIEW= "com.rada.xkcd.action.VIEW";
   public static final String ACTION_DOWNLOAD= "com.rada.xkcd.action.DOWNLOAD";
   public static final String ACTION_CLEAR= "com.rada.xkcd.action.CLEAR";
+  public static final String ACTION_VIEW_FAVORITES= "com.rada.xkcd.action.VIEW_FAVORITES";
   
   public static final String KEY_NUMBER= "_id";
   public static final String KEY_TITLE= "title";
@@ -50,11 +60,26 @@ public final class Comics {
   public static final int MESSAGE_DOWNLOAD= 500;
   public static final int MESSAGE_CLEAR= 501;
   
+  public static final int BUFFER_SIZE= 10000;
+  public static final int MAX_DOWNLOAD_ATTEMPTS= 99;
+  
   public static final String SD_DIR_PATH= "/sdcard/xkcd/";
   public static final File SD_DIR= new File(SD_DIR_PATH);
   
   public static final String MAIN_URL= "http://www.xkcd.com/";
   public static final String ARCHIVE_URL= MAIN_URL + "archive/index.html";
+  
+  public static class ToastRunnable implements Runnable {
+    Toast toast;
+    
+    ToastRunnable(Context context, CharSequence text, int duration) {
+      toast= Toast.makeText(context, text, duration);
+    }
+    
+    public void run() {
+      toast.show();
+    }
+  }
   
   public static final InputStream download(URL url) throws IOException {
     HttpURLConnection conn= (HttpURLConnection) url.openConnection();
@@ -64,5 +89,37 @@ public final class Comics {
   
   public static final InputStream download(String url) throws MalformedURLException, IOException {
     return download(new URL(url));
+  }
+
+  public static final void downloadComic(long comicNumber, ComicDbAdapter dbAdapter) throws MalformedURLException, IOException, Exception {
+    if (!Comics.SD_DIR.exists())
+      Comics.SD_DIR.mkdirs();
+    
+    File file= new File(SD_DIR_PATH + comicNumber);
+    
+    Cursor cursor= dbAdapter.fetchComic(comicNumber);
+    String url= cursor.getString(cursor.getColumnIndexOrThrow(KEY_URL));
+
+    if (url == null) {
+      dbAdapter.updateComic(comicNumber);
+      cursor= dbAdapter.fetchComic(comicNumber);
+      url= cursor.getString(cursor.getColumnIndexOrThrow(KEY_URL));
+    }
+    cursor.close();
+
+    Bitmap image= null;
+    for (int i= 0; i < MAX_DOWNLOAD_ATTEMPTS && image == null; ++i) {
+      // I'm not using a buffered input stream because it has in the past
+      // caused more download issues than it's worth for the performance boost
+      image= BitmapFactory.decodeStream(Comics.download(url));
+    }
+    if (image == null)
+      throw new Exception("image is null");
+    
+    FileOutputStream ostream= new FileOutputStream(file);
+    BufferedOutputStream bo= new BufferedOutputStream(ostream, BUFFER_SIZE);
+    image.compress(CompressFormat.PNG, 100, bo);
+    bo.close();
+    ostream.close();
   }
 }
