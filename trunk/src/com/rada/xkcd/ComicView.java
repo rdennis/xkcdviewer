@@ -160,13 +160,11 @@ public class ComicView extends Activity {
   
   @Override
   public void onSaveInstanceState(Bundle outState) {
-    super.onSaveInstanceState(outState);
     outState.putLong(Comics.KEY_NUMBER, comicNumber);
   }
   
   @Override
   public boolean onCreateOptionsMenu(Menu menu) {
-    super.onCreateOptionsMenu(menu);
     getMenuInflater().inflate(R.menu.viewer_menu, menu);
     return true;
   }
