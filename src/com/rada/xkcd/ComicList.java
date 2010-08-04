@@ -54,6 +54,8 @@ public class ComicList extends ListActivity {
   private ComicDbAdapter dbAdapter;
   private static Calendar lastUpdate;
   
+  private Cursor listCursor;
+  
   /** Called when the activity is first created. */
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -255,14 +257,14 @@ public class ComicList extends ListActivity {
   }
   
   private synchronized void populateList() {
-    Cursor comics= isFavoriteView ? dbAdapter.fetchFavoriteComics() : dbAdapter.fetchAllComics();
-    startManagingCursor(comics);
+    listCursor= isFavoriteView ? dbAdapter.fetchFavoriteComics() : dbAdapter.fetchAllComics();
+    startManagingCursor(listCursor);
     
     String[] from= new String[] { Comics.KEY_FAVORITE, Comics.KEY_NUMBER, Comics.KEY_TITLE };
     int [] to= new int[] { R.id.star, R.id.row_number, R.id.row_title };
     
     SimpleCursorAdapter adapter=
-      new SimpleCursorAdapter(this, R.layout.comic_row, comics, from, to);
+      new SimpleCursorAdapter(this, R.layout.comic_row, listCursor, from, to);
     adapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
       public boolean setViewValue(View v, Cursor cursor, int columnIndex) {
         if (columnIndex == cursor.getColumnIndexOrThrow(Comics.KEY_FAVORITE)) {
@@ -353,7 +355,7 @@ public class ComicList extends ListActivity {
         message= Toast.makeText(this, "Unkown update status: " + status, Toast.LENGTH_LONG);
       }
     }
-    populateList();
+    listCursor.requery();
     message.show();
   }
 }

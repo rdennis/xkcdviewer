@@ -20,7 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
 -->
 
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-<!-- 
 <group android:id="@+id/top">
   <item android:id="@+id/menu_downloadall"
       android:title="@string/menu_downloadall"
@@ -30,7 +29,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
       android:title="@string/menu_clearall"
       android:icon="@android:drawable/ic_menu_delete"/>
 </group>
--->
 
 <group android:id="@+id/bottom">
 <!--

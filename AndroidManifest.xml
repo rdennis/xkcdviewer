@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.rada.xkcd"
-    android:versionName="0.6.1 alpha" android:versionCode="14">
+    android:versionName="0.6.2 alpha" android:versionCode="15">
   <application android:icon="@drawable/icon" android:label="@string/app_name">
     <activity android:name=".ComicList"
         android:label="@string/app_name">
@@ -43,13 +43,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
         <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
       </intent-filter>
     </activity>
-
-    <service android:name=".ComicDownloader">
-      <intent-filter>
-        <action android:name="com.rada.xkcd.action.DOWNLOAD" />
-        <action android:name="com.rada.xkcd.action.CLEAR" />
-      </intent-filter>
-    </service>
 </application>
 
 <uses-permission android:name="android.permission.INTERNET"/>

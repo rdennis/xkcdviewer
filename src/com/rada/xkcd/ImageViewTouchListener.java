@@ -45,7 +45,7 @@ public class ImageViewTouchListener implements OnTouchListener {
   public static final int DRAG= 1;
   public static final int ZOOM= 2;
 
-  private static final float CLICK_MOVE_TOLERANCE= 3f; // pixels
+  private static final float CLICK_MOVE_TOLERANCE= 5f; // pixels
   private static final int CLICK_TIME_TOLERANCE= 300;  // milliseconds
   
   private int mode;
