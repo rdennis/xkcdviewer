@@ -347,7 +347,7 @@ public class ComicDbAdapter {
     url= Html.fromHtml(m.group()).toString();
     m= textPattern.matcher(line);
     if (m.find()) {
-      text= Html.fromHtml(m.group()).toString();
+      text= Html.fromHtml(Html.fromHtml(m.group()).toString()).toString();
       return updateComic(number, text, url);
     } else
       return false;
