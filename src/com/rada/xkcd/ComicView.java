@@ -24,6 +24,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.Calendar;
+import java.util.Random;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -126,9 +128,12 @@ public class ComicView extends Activity {
     goButton.setOnClickListener(new OnClickListener() {
       @Override
       public void onClick(View view) {
-        long newNumber= Long.parseLong(comicText.getText().toString());
-        if (newNumber > 0 && newNumber <= maxNumber && newNumber != 404)
-          comicNumber= newNumber;
+        String text= comicText.getText().toString();
+        if (text.length() > 0) {
+          long newNumber= Long.parseLong(text);
+          if (newNumber != 404l)
+            comicNumber= newNumber;
+        }
         updateDisplay();
       }
     });
@@ -154,13 +159,23 @@ public class ComicView extends Activity {
         updateDisplay();
       }
     });
-    
+  }
+  
+  @Override
+  public void onResume() {
+    super.onResume();
     updateDisplay();
   }
   
   @Override
   public void onSaveInstanceState(Bundle outState) {
     outState.putLong(Comics.KEY_NUMBER, comicNumber);
+  }
+  
+  @Override
+  public void onDestroy() {
+    super.onDestroy();
+    dbAdapter.close();
   }
   
   @Override
@@ -174,6 +189,14 @@ public class ComicView extends Activity {
     switch(item.getItemId()) {
       case R.id.menu_hover: {
         showDialog(HOVERTEXT_DIALOGID);
+        return true;
+      }
+      case R.id.menu_random: {
+        Long newNumber= new Random(Calendar.getInstance().getTimeInMillis()).nextLong() % maxNumber + 1;
+        newNumber= Math.abs(newNumber);
+        if (newNumber != 404l)
+          comicNumber= newNumber;
+        updateDisplay();
         return true;
       }
       default: {
@@ -194,7 +217,6 @@ public class ComicView extends Activity {
             thisContext.finish();
           }
         });
-//        dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
         return dialog;
       }
       case HOVERTEXT_DIALOGID: {
@@ -232,6 +254,11 @@ public class ComicView extends Activity {
   }
   
   private void updateDisplay() {
+    if (comicNumber > maxNumber)
+      comicNumber= maxNumber;
+    if (comicNumber < 1l)
+      comicNumber= 1l;
+    
     comicText.setText(comicNumber.toString());
     comicText.clearFocus();
     
@@ -285,6 +312,7 @@ public class ComicView extends Activity {
           Toast.makeText(thisContext, "comicNumber no longer null", Toast.LENGTH_LONG);
         }
         
+        dbAdapter.updateComic(comicNumber);
         Comics.downloadComic(comicNumber, dbAdapter);
 
         result= Comics.STATUS_SUCCESS;

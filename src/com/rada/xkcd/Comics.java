@@ -18,6 +18,7 @@
  */
 package com.rada.xkcd;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -29,16 +30,15 @@ import java.net.URL;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import org.apache.http.util.ByteArrayBuffer;
+
 import android.content.Context;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.Bitmap.CompressFormat;
-import android.graphics.BitmapFactory;
 import android.widget.Toast;
 
 public final class Comics {
   
-  public static final Executor BACKGROUND_EXECUTOR= Executors.newSingleThreadExecutor();
+  public static final Executor BACKGROUND_EXECUTOR= Executors.newCachedThreadPool();
   
   public static final String ACTION_VIEW= "com.rada.xkcd.action.VIEW";
   public static final String ACTION_DOWNLOAD= "com.rada.xkcd.action.DOWNLOAD";
@@ -61,7 +61,6 @@ public final class Comics {
   public static final int MESSAGE_CLEAR= 501;
   
   public static final int BUFFER_SIZE= 10000;
-  public static final int MAX_DOWNLOAD_ATTEMPTS= 99;
   
   public static final String SD_DIR_PATH= "/sdcard/xkcd/";
   public static final File SD_DIR= new File(SD_DIR_PATH);
@@ -96,30 +95,29 @@ public final class Comics {
       Comics.SD_DIR.mkdirs();
     
     File file= new File(SD_DIR_PATH + comicNumber);
-    
-    Cursor cursor= dbAdapter.fetchComic(comicNumber);
-    String url= cursor.getString(cursor.getColumnIndexOrThrow(KEY_URL));
+    if (file.length() <= 0) {
+      Cursor cursor= dbAdapter.fetchComic(comicNumber);
+      String url= cursor.getString(cursor.getColumnIndexOrThrow(KEY_URL));
 
-    if (url == null) {
-      dbAdapter.updateComic(comicNumber);
-      cursor= dbAdapter.fetchComic(comicNumber);
-      url= cursor.getString(cursor.getColumnIndexOrThrow(KEY_URL));
-    }
-    cursor.close();
+      if (url == null || url.length() == 0) {
+        dbAdapter.updateComic(comicNumber);
+        cursor= dbAdapter.fetchComic(comicNumber);
+        url= cursor.getString(cursor.getColumnIndexOrThrow(KEY_URL));
+      }
+      cursor.close();
 
-    Bitmap image= null;
-    for (int i= 0; i < MAX_DOWNLOAD_ATTEMPTS && image == null; ++i) {
-      // I'm not using a buffered input stream because it has in the past
-      // caused more download issues than it's worth for the performance boost
-      image= BitmapFactory.decodeStream(Comics.download(url));
+      BufferedInputStream bufferedInStream= new BufferedInputStream(download(url), BUFFER_SIZE);
+      ByteArrayBuffer buffer= new ByteArrayBuffer(50);
+      int current = 0;
+      while ((current = bufferedInStream.read()) != -1) {
+        buffer.append((byte) current);
+      }
+
+      FileOutputStream ostream= new FileOutputStream(file);
+      BufferedOutputStream bo= new BufferedOutputStream(ostream, BUFFER_SIZE);
+      bo.write(buffer.toByteArray());
+      bo.close();
+      ostream.close();
     }
-    if (image == null)
-      throw new Exception("image is null");
-    
-    FileOutputStream ostream= new FileOutputStream(file);
-    BufferedOutputStream bo= new BufferedOutputStream(ostream, BUFFER_SIZE);
-    image.compress(CompressFormat.PNG, 100, bo);
-    bo.close();
-    ostream.close();
   }
 }

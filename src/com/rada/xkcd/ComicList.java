@@ -21,8 +21,15 @@ package com.rada.xkcd;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ListActivity;
 import android.app.ProgressDialog;
@@ -66,6 +73,8 @@ public class ComicList extends ListActivity {
       isFavoriteView= false;
     } else {
       isFavoriteView= intent.getAction().equals(Comics.ACTION_VIEW_FAVORITES);
+      if (isFavoriteView)
+        setTitle("Favorites");
     }
     
     setContentView(R.layout.comic_list);
@@ -96,6 +105,12 @@ public class ComicList extends ListActivity {
     
     populateList();
     registerForContextMenu(getListView());
+  }
+  
+  @Override
+  public void onDestroy() {
+    super.onDestroy();
+    dbAdapter.close();
   }
 
   @Override
@@ -129,18 +144,114 @@ public class ComicList extends ListActivity {
   @Override
   public boolean onMenuItemSelected(int featureId, MenuItem item) {
     switch(item.getItemId()) {
-//      case R.id.menu_downloadall: {
-//        Intent intent= new Intent(this, ComicDownloader.class);
-//        intent.setAction(Comics.ACTION_DOWNLOAD);
-//        startService(intent);
-//        return true;
-//      }
-//      case R.id.menu_clearall: {
-//        Intent intent= new Intent(this, ComicDownloader.class);
-//        intent.setAction(Comics.ACTION_CLEAR);
-//        startService(intent);
-//        return true;
-//      }
+      case R.id.menu_downloadall: {
+        Cursor cursor= dbAdapter.fetchMostRecentComic();
+        final int max= cursor.getInt(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
+        final int count= (max - Comics.SD_DIR.list().length) - 1;
+        cursor.close();
+        
+        final ProgressDialog progress= new ProgressDialog(thisContext);
+        progress.setMessage("Downloading comics");
+        progress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        progress.setMax(count);
+        progress.setProgress(0);
+        if (count > 0) {
+          progress.show();
+          List<String> list= Arrays.asList(Comics.SD_DIR.list());
+          final Set<String> fileList= new TreeSet<String>(list);
+
+          Comics.BACKGROUND_EXECUTOR.execute(new Runnable() {
+            public void run() {
+              Executor executor= Executors.newFixedThreadPool(25);
+              for (Integer i= max; i > 0; --i) {
+                if (i == 404)
+                  continue;
+                else if (!fileList.contains(i.toString())) {
+                  final int number= i;
+                  executor.execute(new Runnable() {
+                    
+                    public void run() {
+                      try {
+                        Comics.downloadComic(number, dbAdapter);
+                        if (new File(Comics.SD_DIR_PATH + number).length() <= 0)
+                          Comics.downloadComic(number, dbAdapter);
+                      } catch (Exception e) {
+                        runOnUiThread(new Runnable() {
+                          public void run() {
+                            Toast.makeText(thisContext, "Failed to download comic " + number, Toast.LENGTH_LONG).show();
+                          }
+                        });
+                      }
+                      runOnUiThread(new Runnable() {
+                        public void run() {
+                          progress.incrementProgressBy(1);
+                          if (progress.getProgress() == progress.getMax()) {
+                            progress.dismiss();
+                            Toast.makeText(thisContext, "Finished downloading comics", Toast.LENGTH_SHORT).show();
+                          }
+                        }
+                      });
+                    }
+                  });
+                }
+              }
+            }
+          });
+        }
+        
+        return true;
+      }
+      case R.id.menu_clearall: {
+        AlertDialog.Builder builder= new AlertDialog.Builder(thisContext);
+        builder.setCancelable(true);
+        builder.setMessage("Once started this action cannot be stopped or undone.");
+        builder.setIcon(android.R.drawable.ic_dialog_alert);
+        builder.setTitle("Confirm Delete");
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+          public void onClick(DialogInterface dialog, int which) {
+            dialog.dismiss();
+          }
+        });
+        builder.setPositiveButton("Continue", new DialogInterface.OnClickListener() {
+          
+          public void onClick(DialogInterface dialog, int which) {
+            dialog.dismiss();
+            final ProgressDialog progress= new ProgressDialog(thisContext);
+            progress.setMessage("Deleting comics...");
+            progress.setIndeterminate(true);
+            progress.setCancelable(false);
+            progress.show();
+            Comics.BACKGROUND_EXECUTOR.execute(new Runnable() {
+
+              public void run() {
+                Executor executor= Executors.newFixedThreadPool(50);
+                final File[] fileList= Comics.SD_DIR.listFiles();
+                for (int i= 0; i < fileList.length; ++i) {
+                  final int number= i;
+                  if (fileList[number].exists())
+
+                    executor.execute(new Runnable() {
+                      public void run() {
+                        fileList[number].delete();
+                        if (number + 1 == fileList.length) {
+
+                          runOnUiThread(new Runnable() {
+                            public void run() {
+                              progress.dismiss();
+                              Toast.makeText(thisContext, "Cleared all comics", Toast.LENGTH_SHORT).show();
+                            }
+                          });
+                        }
+                      }
+                    });
+                }
+              }
+            }); 
+          }
+        });
+        builder.show();
+        return true;
+      }
       case R.id.menu_goto: {
         Intent intent= new Intent();
         intent.setAction(Intent.ACTION_VIEW);
