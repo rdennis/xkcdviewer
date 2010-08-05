@@ -289,6 +289,7 @@ public class ComicList extends ListActivity {
               } else {
                 view.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_off));
               }
+              listCursor.requery();
             }
           });
           return true;
