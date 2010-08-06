@@ -24,8 +24,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.util.Calendar;
-import java.util.Random;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -34,9 +32,11 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
+import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -47,6 +47,8 @@ import android.view.View.OnClickListener;
 import android.view.View.OnFocusChangeListener;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
@@ -64,7 +66,8 @@ public class ComicView extends Activity {
   private volatile ComicDbAdapter dbAdapter;
   private volatile Long comicNumber= null;
   private long maxNumber;
-  
+
+  private CheckBox checkBox;
   private EditText comicText;
   private Button goButton;
   private Button nextButton;
@@ -95,6 +98,7 @@ public class ComicView extends Activity {
       comicNumber= maxNumber;
     }
     
+    checkBox= (CheckBox) findViewById(R.id.star);
     comicText= (EditText) findViewById(R.id.edit_number);
     goButton= (Button) findViewById(R.id.button_go);
     nextButton= (Button) findViewById(R.id.button_next);
@@ -102,6 +106,12 @@ public class ComicView extends Activity {
     comicImage= (ImageView) findViewById(R.id.image_comic);
     
     comicImage.setFocusable(true);
+    
+    checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+      public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        dbAdapter.updateComic(comicNumber, isChecked);
+      }
+    });
     
     comicText.setOnFocusChangeListener(new OnFocusChangeListener() {
       public void onFocusChange(View v, boolean hasFocus) {
@@ -192,12 +202,19 @@ public class ComicView extends Activity {
         return true;
       }
       case R.id.menu_random: {
-        Long newNumber= new Random(Calendar.getInstance().getTimeInMillis()).nextLong() % maxNumber + 1;
+        Long newNumber= Comics.RANDOM.nextLong() % maxNumber + 1;
         newNumber= Math.abs(newNumber);
         if (newNumber != 404l)
           comicNumber= newNumber;
         updateDisplay();
         return true;
+      }
+      case R.id.menu_online: {
+        Intent intent= new Intent();
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.addCategory(Intent.CATEGORY_BROWSABLE);
+        intent.setData(Uri.parse(Comics.MAIN_URL + comicNumber));
+        startActivity(intent);
       }
       default: {
         return super.onMenuItemSelected(featureId, item);
@@ -293,6 +310,7 @@ public class ComicView extends Activity {
         updateDisplay();
       }
     }
+    checkBox.setChecked(dbAdapter.isFavorite(comicNumber));
   }
   
   private class ImageGetter implements Runnable {
