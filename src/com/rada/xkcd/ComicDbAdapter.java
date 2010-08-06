@@ -215,6 +215,34 @@ public class ComicDbAdapter {
         null, null, null,
         KEY_NUMBER + " DESC");
   }
+  
+  /**
+   * Return a cursor over all comics that match the given query.
+   * The comics are in descending order by number.
+   * 
+   * @param query the search query to run against
+   * @return
+   */
+  public Cursor fetchSearchedComics(String query) {
+    String[] split= query.split("[\\s,./(\")|{}\\[\\];\\\\~!@#$%^*()`\\-\\+_=]+");
+    StringBuilder builder= new StringBuilder(KEY_NUMBER + " LIKE '%" + split[0] + "%' OR " +
+        KEY_TITLE + " LIKE '%" + split[0] + "%' OR " +
+        KEY_TEXT + " LIKE '%" + split[0] + "%'");
+    
+    for (int i= 1; i < split.length; ++i) {
+      builder.append(" OR " + KEY_NUMBER + " LIKE '%" + split[i] + "%' OR " +
+          KEY_TITLE + " LIKE '%" + split[i] + "%' OR " +
+          KEY_TEXT + " LIKE '%" + split[i] + "%'");
+    }
+    
+    String selection= builder.toString();
+    
+    return database.query(DATABASE_TABLE,
+        ALL_COLUMNS,
+        selection,
+        null, null, null,
+        KEY_NUMBER + " DESC");
+  }
 
   /**
    * Return a cursor to the comic indicated by number.

@@ -33,6 +33,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ListActivity;
 import android.app.ProgressDialog;
+import android.app.SearchManager;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
@@ -58,7 +59,11 @@ public class ComicList extends ListActivity {
   
   public static final int UPDATE_DIALOGID= 500;
   
-  private boolean isFavoriteView;
+  private static final int NORMAL_VIEW= 1000;
+  private static final int SEARCH_VIEW= 1001;
+  private static final int FAVORITE_VIEW= 1002;
+  
+  private int currentView;
 
   private ComicDbAdapter dbAdapter;
   private static Calendar lastUpdate;
@@ -72,11 +77,16 @@ public class ComicList extends ListActivity {
     
     Intent intent= getIntent();
     if (intent == null) {
-      isFavoriteView= false;
+      currentView= NORMAL_VIEW;
+      setDefaultKeyMode(DEFAULT_KEYS_SEARCH_LOCAL);
+    } else if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
+      currentView= SEARCH_VIEW;
+      setTitle("Search results");
+    } else if (Comics.ACTION_VIEW_FAVORITES.equals(intent.getAction())) {
+      currentView= FAVORITE_VIEW;
+      setTitle("Favorites");
     } else {
-      isFavoriteView= intent.getAction().equals(Comics.ACTION_VIEW_FAVORITES);
-      if (isFavoriteView)
-        setTitle("Favorites");
+      currentView= NORMAL_VIEW;
     }
     
     setContentView(R.layout.comic_list);
@@ -119,7 +129,11 @@ public class ComicList extends ListActivity {
   public boolean onCreateOptionsMenu(Menu menu) {
     super.onCreateOptionsMenu(menu);
     getMenuInflater().inflate(R.menu.selector_menu, menu);
-    menu.findItem(R.id.menu_favorites).setVisible(!isFavoriteView);
+    
+    if (currentView == FAVORITE_VIEW) {
+      menu.findItem(R.id.menu_favorites).setVisible(false);
+    }
+    
     return true;
   }
   
@@ -147,6 +161,10 @@ public class ComicList extends ListActivity {
   public boolean onMenuItemSelected(int featureId, MenuItem item) {
     switch(item.getItemId()) {
       case R.id.menu_downloadall: {
+        if (!Comics.SD_DIR.exists()) {
+          Comics.SD_DIR.mkdirs();
+        }
+        
         Cursor cursor= dbAdapter.fetchMostRecentComic();
         final int max= cursor.getInt(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
         final int count= (max - Comics.SD_DIR.list().length) - 1;
@@ -157,6 +175,11 @@ public class ComicList extends ListActivity {
         progress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         progress.setMax(count);
         progress.setProgress(0);
+        progress.setOnDismissListener(new DialogInterface.OnDismissListener() {
+          public void onDismiss(DialogInterface dialog) {
+            listCursor.requery();
+          }
+        });
         if (count > 0) {
           progress.show();
           List<String> list= Arrays.asList(Comics.SD_DIR.list());
@@ -190,7 +213,6 @@ public class ComicList extends ListActivity {
                           if (progress.getProgress() == progress.getMax()) {
                             progress.dismiss();
                             Toast.makeText(thisContext, "Finished downloading comics", Toast.LENGTH_SHORT).show();
-                            listCursor.requery();
                           }
                         }
                       });
@@ -286,8 +308,9 @@ public class ComicList extends ListActivity {
         startActivity(intent);
         return true;
       }
-//      case R.id.menu_search: {
-//      }
+      case R.id.menu_search: {
+        onSearchRequested();
+      }
 //      case R.id.menu_settings: {
 //      }
       default: {
@@ -380,7 +403,19 @@ public class ComicList extends ListActivity {
   }
   
   private synchronized void populateList() {
-    listCursor= isFavoriteView ? dbAdapter.fetchFavoriteComics() : dbAdapter.fetchAllComics();
+    switch (currentView) {
+      case FAVORITE_VIEW: {
+        listCursor= dbAdapter.fetchFavoriteComics();
+      } break;
+      case SEARCH_VIEW: {
+        String query= getIntent().getStringExtra(SearchManager.QUERY);
+        listCursor= dbAdapter.fetchSearchedComics(query);
+      } break;
+      case NORMAL_VIEW:
+      default: {
+        listCursor= dbAdapter.fetchAllComics();
+      } break;
+    }
     startManagingCursor(listCursor);
     
     String[] from= new String[] { Comics.KEY_FAVORITE, Comics.KEY_NUMBER, Comics.KEY_TITLE };
