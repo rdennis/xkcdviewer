@@ -22,14 +22,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
 <group android:id="@+id/viewer">
-  <item android:id="@+id/menu_hover"
-      android:title="@string/menu_hover"
-      android:icon="@drawable/hover" />
-  <item android:id="@+id/menu_random"
-      android:title="@string/menu_random"
-      android:icon="@drawable/random" />
   <item android:id="@+id/menu_online"
       android:title="@string/menu_online"
       android:icon="@drawable/globe" />
+  <item android:id="@+id/menu_random"
+      android:title="@string/menu_random"
+      android:icon="@drawable/random" />
+  <item android:id="@+id/menu_hover"
+      android:title="@string/menu_hover"
+      android:icon="@drawable/hover" />
 </group>
 </menu>
