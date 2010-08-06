@@ -47,7 +47,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     <LinearLayout android:id="@+id/left_spacer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:gravity="center_vertical">
+      <CheckBox android:id="@+id/star"
+          style="?android:attr/starStyle"
+          android:layout_width="wrap_content"
+          android:layout_height="fill_parent" />
+    </LinearLayout>
 
     <Button android:id="@+id/button_prev"
         android:text="@string/button_prev"

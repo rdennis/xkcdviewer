@@ -44,7 +44,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView.AdapterContextMenuInfo;
+import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
@@ -108,9 +110,9 @@ public class ComicList extends ListActivity {
   }
   
   @Override
-  public void onDestroy() {
-    super.onDestroy();
-    dbAdapter.close();
+  public void onResume() {
+    super.onResume();
+    listCursor.requery();
   }
 
   @Override
@@ -129,7 +131,7 @@ public class ComicList extends ListActivity {
     getMenuInflater().inflate(R.menu.selector_context, menu);
 
     File file= new File("/sdcard/xkcd/" + info.id);
-    if (file.exists()) {
+    if (file.length() > 0) {
       menu.findItem(R.id.menu_download).setVisible(false);
     } else {
       menu.findItem(R.id.menu_clear).setVisible(false);
@@ -188,6 +190,7 @@ public class ComicList extends ListActivity {
                           if (progress.getProgress() == progress.getMax()) {
                             progress.dismiss();
                             Toast.makeText(thisContext, "Finished downloading comics", Toast.LENGTH_SHORT).show();
+                            listCursor.requery();
                           }
                         }
                       });
@@ -213,7 +216,7 @@ public class ComicList extends ListActivity {
           }
         });
         builder.setPositiveButton("Continue", new DialogInterface.OnClickListener() {
-          
+
           public void onClick(DialogInterface dialog, int which) {
             dialog.dismiss();
             final ProgressDialog progress= new ProgressDialog(thisContext);
@@ -228,7 +231,7 @@ public class ComicList extends ListActivity {
                 final File[] fileList= Comics.SD_DIR.listFiles();
                 for (int i= 0; i < fileList.length; ++i) {
                   final int number= i;
-                  if (fileList[number].exists())
+                  if (fileList[number].exists()) {
 
                     executor.execute(new Runnable() {
                       public void run() {
@@ -239,17 +242,40 @@ public class ComicList extends ListActivity {
                             public void run() {
                               progress.dismiss();
                               Toast.makeText(thisContext, "Cleared all comics", Toast.LENGTH_SHORT).show();
+                              listCursor.requery();
                             }
                           });
                         }
                       }
                     });
+                  }
                 }
               }
             }); 
           }
         });
         builder.show();
+        return true;
+      }
+      case R.id.menu_favorites: {
+        Intent intent= new Intent(this, ComicList.class);
+        intent.setAction(Comics.ACTION_VIEW_FAVORITES);
+        startActivity(intent);
+        return true;
+      }
+      case R.id.menu_random: {
+        Cursor cursor= dbAdapter.fetchMostRecentComic();
+        long maxNumber= cursor.getLong(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
+        long number= Math.abs(Comics.RANDOM.nextLong() % maxNumber + 1);
+        cursor.close();
+        
+        if (number == 404l)
+          number= maxNumber;
+        
+        Intent intent= new Intent(this, ComicView.class);
+        intent.setAction(Comics.ACTION_VIEW);
+        intent.putExtra(Comics.KEY_NUMBER, number);
+        startActivity(intent);
         return true;
       }
       case R.id.menu_goto: {
@@ -259,11 +285,6 @@ public class ComicList extends ListActivity {
         intent.setData(Uri.parse(Comics.MAIN_URL));
         startActivity(intent);
         return true;
-      }
-      case R.id.menu_favorites: {
-        Intent intent= new Intent(this, ComicList.class);
-        intent.setAction(Comics.ACTION_VIEW_FAVORITES);
-        startActivity(intent);
       }
 //      case R.id.menu_search: {
 //      }
@@ -287,24 +308,11 @@ public class ComicList extends ListActivity {
         return true;
       }
       case R.id.menu_download: {
-        final long comicNumber= info.id;
-        Comics.BACKGROUND_EXECUTOR.execute(new Runnable() {
-          public void run() {
-            String statusText;
-            try {
-              Comics.downloadComic(comicNumber, dbAdapter);
-              statusText= "Downloaded comic " + comicNumber;
-            } catch (Exception e) {
-              statusText= "Failed to download comic " + comicNumber;
-            }
-            final String finalText= statusText;
-            runOnUiThread(new Runnable() {
-              public void run() {
-                Toast.makeText(thisContext, finalText, Toast.LENGTH_SHORT).show();
-              }
-            });
-          }
-        });
+        Toast.makeText(thisContext, "Downloading comic " + info.id, Toast.LENGTH_SHORT / 2).show();
+        ImageView view= (ImageView) info.targetView.findViewById(R.id.row_arrow);
+        view.setImageDrawable(getResources().getDrawable(R.drawable.active));
+        view.setClickable(false);
+        download(info.id);
         return true;
       }
       case R.id.menu_clear: {
@@ -312,6 +320,7 @@ public class ComicList extends ListActivity {
         if (file.exists()) {
           file.delete();
           Toast.makeText(thisContext, "Deleted comic number " + info.id, Toast.LENGTH_SHORT).show();
+          listCursor.requery();
         }
         return true;
       }
@@ -333,8 +342,10 @@ public class ComicList extends ListActivity {
         target.dispatchTouchEvent(upEvent);
         return true;
       }
+      default: {
+        return super.onContextItemSelected(item);
+      }
     }
-    return super.onContextItemSelected(item);
   }
 
   @Override
@@ -362,8 +373,9 @@ public class ComicList extends ListActivity {
         });
         return dialog;
       }
-      default:
+      default: {
         return null;
+      }
     }
   }
   
@@ -372,37 +384,44 @@ public class ComicList extends ListActivity {
     startManagingCursor(listCursor);
     
     String[] from= new String[] { Comics.KEY_FAVORITE, Comics.KEY_NUMBER, Comics.KEY_TITLE };
-    int [] to= new int[] { R.id.star, R.id.row_number, R.id.row_title };
+    int [] to= new int[] { R.id.row_star, R.id.row_number, R.id.row_title };
     
     SimpleCursorAdapter adapter=
       new SimpleCursorAdapter(this, R.layout.comic_row, listCursor, from, to);
     adapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
       public boolean setViewValue(View v, Cursor cursor, int columnIndex) {
         if (columnIndex == cursor.getColumnIndexOrThrow(Comics.KEY_FAVORITE)) {
-          final ImageView imageView= (ImageView) v;
+          final CheckBox checkBox= (CheckBox) v;
           final long id= cursor.getLong(cursor.getColumnIndexOrThrow(Comics.KEY_NUMBER));
           final boolean isFavorite= cursor.getLong(columnIndex) != 0;
-          if (isFavorite) {
-            imageView.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_on));
-          } else {
-            imageView.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_off));
-          }
-          imageView.setClickable(true);
-          imageView.setOnClickListener(new View.OnClickListener() {
+          checkBox.setChecked(isFavorite);
+          checkBox.setOnClickListener(new View.OnClickListener() {
             private boolean isFavorited= isFavorite;
-            private ImageView view= imageView;
             private long number= id;
             public void onClick(View v) {
               isFavorited= !isFavorited;
               dbAdapter.updateComic(number, isFavorited);
-              if (isFavorited) {
-                view.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_on));
-              } else {
-                view.setImageDrawable(getResources().getDrawable(android.R.drawable.btn_star_big_off));
-              }
               listCursor.requery();
             }
           });
+          ImageView view= (ImageView) ((ViewGroup) v.getParent()).findViewById(R.id.row_arrow);
+          if (new File(Comics.SD_DIR_PATH + id).length() > 0) {
+            view.setImageDrawable(getResources().getDrawable(R.drawable.arrow));
+            view.setClickable(false);
+          } else {
+            view.setImageDrawable(getResources().getDrawable(R.drawable.down));
+            view.setClickable(true);
+            view.setOnClickListener(new View.OnClickListener() {
+              long comicNumber= id;
+              public void onClick(View v) {
+                Toast.makeText(thisContext, "Downloading comic " + comicNumber, Toast.LENGTH_SHORT / 2).show();
+                ImageView view= (ImageView) v;
+                view.setImageDrawable(getResources().getDrawable(R.drawable.active));
+                view.setClickable(false);
+                download(comicNumber);
+              }
+            });
+          }
           return true;
         }
         return false;
@@ -469,5 +488,27 @@ public class ComicList extends ListActivity {
     }
     listCursor.requery();
     message.show();
+  }
+  
+  public void download(long number) {
+    final long comicNumber= number;
+    Comics.BACKGROUND_EXECUTOR.execute(new Runnable() {
+      public void run() {
+        String statusText;
+        try {
+          Comics.downloadComic(comicNumber, dbAdapter);
+          statusText= "Downloaded comic " + comicNumber;
+        } catch (Exception e) {
+          statusText= "Failed to download comic " + comicNumber;
+        }
+        final String finalText= statusText;
+        runOnUiThread(new Runnable() {
+          public void run() {
+            Toast.makeText(thisContext, finalText, Toast.LENGTH_SHORT).show();
+            listCursor.requery();
+          }
+        });
+      }
+    });
   }
 }

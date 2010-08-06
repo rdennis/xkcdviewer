@@ -27,6 +27,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Calendar;
+import java.util.Random;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -37,6 +39,8 @@ import android.database.Cursor;
 import android.widget.Toast;
 
 public final class Comics {
+  
+  public static final Random RANDOM= new Random(Calendar.getInstance().getTimeInMillis());
   
   public static final Executor BACKGROUND_EXECUTOR= Executors.newCachedThreadPool();
   
