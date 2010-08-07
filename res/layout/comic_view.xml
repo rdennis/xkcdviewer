@@ -29,7 +29,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
       android:layout_height="fill_parent"
       android:layout_weight="1"
       android:background="@android:color/white"
-      android:fadeScrollbars="true"
       android:isScrollContainer="true">
     <ImageView android:id="@+id/image_comic"
         android:layout_width="fill_parent"
