@@ -92,27 +92,29 @@ public class ComicList extends ListActivity {
     setContentView(R.layout.comic_list);
     dbAdapter= new ComicDbAdapter(this);
     dbAdapter.open();
+    
+    if (currentView == NORMAL_VIEW) {
+      Calendar now= Calendar.getInstance();
 
-    Calendar now= Calendar.getInstance();
+      int today= now.get(Calendar.DAY_OF_YEAR);
+      int weekday= now.get(Calendar.DAY_OF_WEEK);
+      int lastUpdateDay= (lastUpdate != null)? lastUpdate.get(Calendar.DAY_OF_YEAR) : -1;
 
-    int today= now.get(Calendar.DAY_OF_YEAR);
-    int weekday= now.get(Calendar.DAY_OF_WEEK);
-    int lastUpdateDay= (lastUpdate != null)? lastUpdate.get(Calendar.DAY_OF_YEAR) : -1;
-
-    // This is a mess, I'm aware of that, but it makes it only update if it's necessary
-    if (// if it's update day and last update wasn't today
-        ((weekday == Calendar.MONDAY || weekday == Calendar.WEDNESDAY || weekday == Calendar.FRIDAY) &&
-         (today != lastUpdateDay)) ||
+      // This is a mess, I'm aware of that, but it makes it only update if it's necessary
+      if (// if it's update day and last update wasn't today
+          ((weekday == Calendar.MONDAY || weekday == Calendar.WEDNESDAY || weekday == Calendar.FRIDAY) &&
+           (today != lastUpdateDay)) ||
          
-        // if it's not update day but it wasn't updated yesterday
-        ((weekday == Calendar.TUESDAY || weekday == Calendar.THURSDAY || weekday == Calendar.SATURDAY) &&
-         (Math.abs(today - lastUpdateDay) > 1)) ||
+          // if it's not update day but it wasn't updated yesterday
+          ((weekday == Calendar.TUESDAY || weekday == Calendar.THURSDAY || weekday == Calendar.SATURDAY) &&
+           (Math.abs(today - lastUpdateDay) > 1)) ||
          
-        // if it's Sunday and it wasn't updated Friday or Saturday
-        ((weekday == Calendar.SUNDAY) && (Math.abs(today - lastUpdateDay) > 2))
-       ) {
-      showDialog(UPDATE_DIALOGID);
-      Comics.BACKGROUND_EXECUTOR.execute(new Updater());
+          // if it's Sunday and it wasn't updated Friday or Saturday
+          ((weekday == Calendar.SUNDAY) && (Math.abs(today - lastUpdateDay) > 2))
+         ) {
+        showDialog(UPDATE_DIALOGID);
+        Comics.BACKGROUND_EXECUTOR.execute(new Updater());
+      }
     }
     
     populateList();

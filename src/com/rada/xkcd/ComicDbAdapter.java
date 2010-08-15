@@ -225,14 +225,17 @@ public class ComicDbAdapter {
    */
   public Cursor fetchSearchedComics(String query) {
     String[] split= query.split("[\\s,./(\")|{}\\[\\];\\\\~!@#$%^*()`\\-\\+_=]+");
-    StringBuilder builder= new StringBuilder(KEY_NUMBER + " LIKE '%" + split[0] + "%' OR " +
-        KEY_TITLE + " LIKE '%" + split[0] + "%' OR " +
-        KEY_TEXT + " LIKE '%" + split[0] + "%'");
+    StringBuilder builder= new StringBuilder();
     
-    for (int i= 1; i < split.length; ++i) {
-      builder.append(" OR " + KEY_NUMBER + " LIKE '%" + split[i] + "%' OR " +
-          KEY_TITLE + " LIKE '%" + split[i] + "%' OR " +
-          KEY_TEXT + " LIKE '%" + split[i] + "%'");
+    for (int i= 0; i < split.length; ++i) {
+      if (i > 0) {
+        builder.append(" OR ");
+      }
+      builder.append(KEY_TITLE + " LIKE '%" + split[0] + "%' OR " +
+          KEY_TEXT + " LIKE '%" + split[0] + "%'");
+      if (Pattern.matches("^\\d{1,4}$", split[i])) {
+        builder.append(" OR " + KEY_NUMBER + "=" + split[i]);
+      }
     }
     
     String selection= builder.toString();

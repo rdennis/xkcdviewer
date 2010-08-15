@@ -40,18 +40,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
         android:title="@string/menu_search"
         android:icon="@android:drawable/ic_menu_search"/>
 -->
-  <item android:id="@+id/menu_goto"
-      android:title="@string/menu_goto"
-      android:titleCondensed="@string/menu_xkcd"
-      android:icon="@drawable/globe" />
+  <item android:id="@+id/menu_favorites"
+      android:title="@string/menu_favorites"
+      android:icon="@drawable/star" />
       
   <item android:id="@+id/menu_random"
       android:title="@string/menu_random"
       android:icon="@drawable/random" />
-      
-  <item android:id="@+id/menu_favorites"
-      android:title="@string/menu_favorites"
-      android:icon="@drawable/star" />
+
+  <item android:id="@+id/menu_goto"
+      android:title="@string/menu_goto"
+      android:titleCondensed="@string/menu_xkcd"
+      android:icon="@drawable/globe" />
 <!-- 
   <item android:id="@+id/menu_settings"
       android:title="@string/menu_settings"
