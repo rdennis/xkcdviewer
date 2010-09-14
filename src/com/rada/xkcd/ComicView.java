@@ -31,8 +31,8 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.DialogInterface.OnCancelListener;
 import android.content.Intent;
+import android.content.DialogInterface.OnCancelListener;
 import android.database.Cursor;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
@@ -51,8 +51,8 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.ImageView.ScaleType;
 import android.widget.Toast;
+import android.widget.ImageView.ScaleType;
 
 public class ComicView extends Activity {
   
@@ -136,8 +136,8 @@ public class ComicView extends Activity {
     });
     
     goButton.setOnClickListener(new OnClickListener() {
-      @Override
-      public void onClick(View view) {
+    	
+    	public void onClick(View view) {
         String text= comicText.getText().toString();
         if (text.length() > 0) {
           long newNumber= Long.parseLong(text);
@@ -317,7 +317,6 @@ public class ComicView extends Activity {
 
     private static final int MAX_DOWNLOAD_ATTEMPTS= 99;
 
-    @Override
     public void run() {
       int result;
       try {
@@ -354,7 +353,6 @@ public class ComicView extends Activity {
       this.status= status;
     }
     
-    @Override
     public void run() {
       dismissDialog(DOWNLOAD_DIALOGID);
       switch (status) {
