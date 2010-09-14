@@ -468,7 +468,7 @@ public class ComicList extends ListActivity {
   }
   
   private class Updater implements Runnable {
-    @Override
+	  
     public void run() {
       int result;
       try {
@@ -496,7 +496,6 @@ public class ComicList extends ListActivity {
       this.status= status;
     }
     
-    @Override
     public void run() {
       finishListUpdate(status);
     }
