@@ -64,7 +64,6 @@ public class ImageViewTouchListener implements OnTouchListener {
     point.set(x / 2, y / 2);
   }
   
-  @Override
   public boolean onTouch(View v, MotionEvent event) {
     ImageView view= (ImageView) v;
     view.setScaleType(ScaleType.MATRIX);
