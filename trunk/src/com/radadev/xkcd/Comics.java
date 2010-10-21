@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.radadev.xkcd.compat;
+package com.radadev.xkcd;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -33,7 +33,7 @@ import java.util.Random;
 
 import org.apache.http.util.ByteArrayBuffer;
 
-import com.radadev.xkcd.compat.database.ComicDbAdapter;
+import com.radadev.xkcd.database.ComicDbAdapter;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -67,11 +67,11 @@ public final class Comics {
   public static final String SQL_KEY_FAVORITE= "favorite";
   public static final String[] SQL_ALL_COLUMNS= { SQL_KEY_NUMBER, SQL_KEY_TITLE, SQL_KEY_TEXT, SQL_KEY_IMAGE, SQL_KEY_FAVORITE };
   
-  public static final String ACTION_VIEW= "com.radadev.xkcd.compat.View";
-  public static final String ACTION_VIEW_FAVORITES= "com.radadev.xkcd.compat.ViewFavorites";
+  public static final String ACTION_VIEW= "com.radadev.xkcd.View";
+  public static final String ACTION_VIEW_FAVORITES= "com.radadev.xkcd.ViewFavorites";
   
-  public static final String KEY_LAST_UPDATE= "com.radadev.xkcd.compat.LastUpdate";
-  public static final String KEY_NUMBER= "com.radadev.xkcd.compat.Number";
+  public static final String KEY_LAST_UPDATE= "com.radadev.xkcd.LastUpdate";
+  public static final String KEY_NUMBER= "com.radadev.xkcd.Number";
   
   public static final String URL_MAIN= "http://m.xkcd.com/";
   public static final String URL_ARCHIVE= URL_MAIN + "archive/index.html";

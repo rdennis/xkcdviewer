@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.radadev.xkcd.compat;
+package com.radadev.xkcd;
 
 import android.app.Service;
 import android.content.Intent;
@@ -25,7 +25,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 
-import com.radadev.xkcd.compat.database.ComicDbAdapter;
+import com.radadev.xkcd.database.ComicDbAdapter;
 
 public class ComicService extends Service {
 

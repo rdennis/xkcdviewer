@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.radadev.xkcd.compat;
+package com.radadev.xkcd;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -53,11 +53,11 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 
-import com.radadev.xkcd.compat.ComicAsync.AsyncClear;
-import com.radadev.xkcd.compat.ComicAsync.AsyncDownload;
-import com.radadev.xkcd.compat.ComicAsync.AsyncDownloadAll;
-import com.radadev.xkcd.compat.ComicAsync.AsyncUpdate;
-import com.radadev.xkcd.compat.database.ComicDbAdapter;
+import com.radadev.xkcd.ComicAsync.AsyncClear;
+import com.radadev.xkcd.ComicAsync.AsyncDownload;
+import com.radadev.xkcd.ComicAsync.AsyncDownloadAll;
+import com.radadev.xkcd.ComicAsync.AsyncUpdate;
+import com.radadev.xkcd.database.ComicDbAdapter;
 
 public class ComicList extends ListActivity {
 
@@ -67,6 +67,8 @@ public class ComicList extends ListActivity {
   private final Messenger mMessenger = new Messenger(new IncomingHandler());
 
   private ComicDbAdapter mDbAdapter;
+  
+  private Set<Integer> mDownloadingList= new HashSet<Integer>();
 
   private boolean mIsBound= false;
   private Messenger mService= null;
@@ -171,6 +173,7 @@ public class ComicList extends ListActivity {
         ImageView view= (ImageView) info.targetView.findViewById(R.id.row_arrow);
         view.setImageDrawable(getResources().getDrawable(R.drawable.active));
         view.setClickable(false);
+        mDownloadingList.add(comicNumber);
         AsyncDownload downloader= new AsyncDownload(this);
         downloader.setShowProgress(false);
         downloader.setPostCallBack(new Runnable() {
@@ -369,6 +372,9 @@ public class ComicList extends ListActivity {
         if (new File(Comics.getSdDir(ComicList.this), Integer.toString(id)).length() > 0) {
           view.setImageDrawable(getResources().getDrawable(R.drawable.arrow));
           view.setClickable(false);
+        } else if (mDownloadingList.contains(id)) {
+          view.setImageDrawable(getResources().getDrawable(R.drawable.active));
+          view.setClickable(false);
         } else {
           view.setImageDrawable(getResources().getDrawable(R.drawable.down));
           view.setClickable(true);
@@ -378,11 +384,13 @@ public class ComicList extends ListActivity {
               ImageView view= (ImageView) v;
               view.setImageDrawable(getResources().getDrawable(R.drawable.active));
               view.setClickable(false);
+              mDownloadingList.add(comicNumber);
               AsyncDownload downloader= new AsyncDownload(ComicList.this);
               downloader.setShowProgress(false);
               downloader.setFinishedCallBack(new Runnable() {
                 public void run() {
                   requeryCursor();
+                  mDownloadingList.remove(comicNumber);
                   Toast.makeText(ComicList.this, "Downloaded comic " + comicNumber, Toast.LENGTH_SHORT).show();
                 }
               });
