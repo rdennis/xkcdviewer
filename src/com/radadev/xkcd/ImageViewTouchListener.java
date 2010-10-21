@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.radadev.xkcd.compat;
+package com.radadev.xkcd;
 
 import android.graphics.Matrix;
 import android.graphics.PointF;

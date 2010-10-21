@@ -1,4 +1,4 @@
-package com.radadev.xkcd.compat;
+package com.radadev.xkcd;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,8 +19,8 @@ import android.os.AsyncTask;
 import android.util.Pair;
 import android.widget.Toast;
 
-import com.radadev.xkcd.compat.database.ComicDbAdapter;
-import com.radadev.xkcd.compat.scraper.ArchiveScraper;
+import com.radadev.xkcd.database.ComicDbAdapter;
+import com.radadev.xkcd.scraper.ArchiveScraper;
 
 public final class ComicAsync {
   
