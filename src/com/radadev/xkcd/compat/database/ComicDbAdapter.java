@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.rada.xkcd;
+package com.radadev.xkcd.compat.database;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,18 +38,23 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.text.Html;
 import android.util.Log;
+import android.util.Pair;
+
+import com.radadev.xkcd.compat.Comics;
+import com.radadev.xkcd.compat.scraper.ComicScraper;
 
 public class ComicDbAdapter {
 
   private static final int BUFFER_SIZE= 10000;
-  private static final String KEY_NUMBER= Comics.KEY_NUMBER;
-  private static final String KEY_TITLE= Comics.KEY_TITLE;
-  private static final String KEY_TEXT= Comics.KEY_TEXT;
-  private static final String KEY_URL= Comics.KEY_URL;
-  private static final String KEY_FAVORITE= Comics.KEY_FAVORITE;
+
+  private static final String KEY_NUMBER= Comics.SQL_KEY_NUMBER;
+  private static final String KEY_TITLE= Comics.SQL_KEY_TITLE;
+  private static final String KEY_TEXT= Comics.SQL_KEY_TEXT;
+  private static final String KEY_IMAGE= Comics.SQL_KEY_IMAGE;
+  private static final String KEY_FAVORITE= Comics.SQL_KEY_FAVORITE;
   private static final String KEY_MAXNUMBER= "MAX(" + KEY_NUMBER + ")";
-  private static final String[] ALL_COLUMNS= Comics.ALL_COLUMNS;
-  
+  private static final String[] ALL_COLUMNS= Comics.SQL_ALL_COLUMNS;
+
   private DatabaseHelper dbHelper;
   private SQLiteDatabase database;
 
@@ -63,30 +69,10 @@ public class ComicDbAdapter {
     KEY_NUMBER + " integer primary key, " + 
     KEY_TITLE + " text not null, " +
     KEY_TEXT + " text, " +
-    KEY_URL + " text, " +
+    KEY_IMAGE + " text, " +
     KEY_FAVORITE + " boolean );";
 
-  private final Context thisContext;
-
-  private static class DatabaseHelper extends SQLiteOpenHelper {
-
-    DatabaseHelper(Context context) {
-      super(context, DATABASE_NAME, null, DATABASE_VERSION);
-    }
-
-    @Override
-    public void onCreate(SQLiteDatabase db) {
-      db.execSQL(DATABASE_CREATE);
-    }
-
-    @Override
-    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-      Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
-          + newVersion + ", which will destroy all old data");
-      db.execSQL("DROP TABLE IF EXISTS " + DATABASE_TABLE);
-      onCreate(db);
-    }
-  }
+  private final Context mContext;
 
   /**
    * Constructor - setup the local context and copy the database if necessary
@@ -94,7 +80,7 @@ public class ComicDbAdapter {
    * @param context context within which to work
    */
   public ComicDbAdapter(Context context) {
-    thisContext= context;
+    mContext= context;
     boolean exists= checkDatabase(DATABASE_NAME);
     
     if (!exists)
@@ -112,7 +98,7 @@ public class ComicDbAdapter {
    * @return true if it already exists, false otherwise
    */
   private boolean checkDatabase(String database) {
-    File file= thisContext.getDatabasePath(database).getAbsoluteFile();
+    File file= mContext.getDatabasePath(database).getAbsoluteFile();
     return file.exists();
   }
   
@@ -125,9 +111,9 @@ public class ComicDbAdapter {
    */
   private void copyDatabase(String database) throws IOException {
     
-    InputStream myInput = thisContext.getAssets().open(database);
+    InputStream myInput = mContext.getAssets().open(database);
 
-    String path = thisContext.getDatabasePath(database).getAbsolutePath();
+    String path = mContext.getDatabasePath(database).getAbsolutePath();
 
     File dir= new File(path.substring(0, path.lastIndexOf(File.separatorChar)));
     File file= new File(path);
@@ -161,7 +147,7 @@ public class ComicDbAdapter {
    * @throws SQLException if the opening/creation of the database fails
    */
   public ComicDbAdapter open() throws SQLException {
-    dbHelper= new DatabaseHelper(thisContext);
+    dbHelper= new DatabaseHelper(mContext);
     database= dbHelper.getWritableDatabase();
     return this;
   }
@@ -180,13 +166,38 @@ public class ComicDbAdapter {
    * @param title the title of the comic to insert
    * @return number of the newly inserted comic
    */
-  public long insertComic(long number, String title) {
+  public int insertComic(int number, String title) {
     ContentValues values= new ContentValues();
     values.put(KEY_NUMBER, number);
     values.put(KEY_TITLE, title);
     values.put(KEY_FAVORITE, false);
 
-    return database.insert(DATABASE_TABLE, null, values);
+    return (int) database.insert(DATABASE_TABLE, null, values);
+  }
+  
+  /**
+   * Insert a list of comics into the database.
+   *
+   * @param comics the list of comics to insert
+   */
+  public void insertComics(Map<Integer, String> comics) {
+    Cursor cursor= fetchMostRecentComic();
+    try {
+      int max= (cursor == null) ? 0 : cursor.getInt(cursor.getColumnIndexOrThrow(KEY_NUMBER));
+      database.beginTransaction();
+      for (Integer key : comics.keySet()) {
+        if (key > max) {
+          String value= comics.get(key);
+          insertComic(key, value);
+        }
+      }
+      database.setTransactionSuccessful();
+      database.endTransaction();
+    } finally {
+      if (cursor != null) {
+        cursor.close();
+      }
+    }
   }
 
   /**
@@ -254,7 +265,7 @@ public class ComicDbAdapter {
    * @return Cursor pointing to given comic
    * @throws SQLException if the comic could not be found
    */
-  public Cursor fetchComic(long number) throws SQLException {
+  public Cursor fetchComic(int number) throws SQLException {
     Cursor cursor= 
       database.query(true, DATABASE_TABLE, ALL_COLUMNS,
                 KEY_NUMBER + "=" + number,
@@ -283,7 +294,7 @@ public class ComicDbAdapter {
       if (cursor != null) {
         cursor.moveToFirst();
       }
-      long number= cursor.getLong(cursor.getColumnIndexOrThrow(KEY_MAXNUMBER));
+      int number= cursor.getInt(cursor.getColumnIndexOrThrow(KEY_MAXNUMBER));
       cursor.close();
   
       // odd, I know, this is used to normalize the column names
@@ -292,19 +303,26 @@ public class ComicDbAdapter {
       throw e;
     }
   }
+  
+  public int getMostRecentComicNumber() {
+    Cursor cursor= fetchMostRecentComic();
+    int result= cursor.getInt(cursor.getColumnIndexOrThrow(KEY_NUMBER));
+    cursor.close();
+    return result;
+  }
 
   /**
    * Update the comic referred to by number to contain the text and url given.
    * 
    * @param number number of the comic to update
    * @param text hover text to add to the comic
-   * @param url url of the picture of the comic
+   * @param image filename of the image
    * @return true if successfully updated, false otherwise
    */
-  public boolean updateComic(long number, String text, String url) {
+  public boolean updateComic(int number, String text, String image) {
     ContentValues values= new ContentValues();
     values.put(KEY_TEXT, text);
-    values.put(KEY_URL, url);
+    values.put(KEY_IMAGE, image);
 
     return database.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
   }
@@ -319,10 +337,10 @@ public class ComicDbAdapter {
    * @param favorite favorite status of the comic
    * @return true if successfully updated, false otherwise
    */
-  public boolean updateComic(long number, String text, String url, boolean favorite) {
+  public boolean updateComic(int number, String text, String url, boolean favorite) {
     ContentValues values= new ContentValues();
     values.put(KEY_TEXT, text);
-    values.put(KEY_URL, url);
+    values.put(KEY_IMAGE, url);
     values.put(KEY_FAVORITE, favorite);
 
     return database.update(DATABASE_TABLE, values, KEY_NUMBER + "=" + number, null) > 0;
@@ -335,7 +353,7 @@ public class ComicDbAdapter {
    * @param favorite favorite status of the comic
    * @return true if successfully updated, false otherwise
    */
-  public boolean updateComic(long number, boolean favorite) {
+  public boolean updateComic(int number, boolean favorite) {
     ContentValues values= new ContentValues();
     values.put(KEY_FAVORITE, favorite);
 
@@ -350,38 +368,11 @@ public class ComicDbAdapter {
    * @throws MalformedURLException if the url is incorrectly formed... this means you screwed up
    * @throws IOException if the connection fails
    */
-  public boolean updateComic(long number) throws MalformedURLException, IOException {
-    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.MAIN_URL + number + "/index.html"), BUFFER_SIZE);
-    DataInputStream page= new DataInputStream(bi);
-
-    String line= null;
-    for (int i= 0; i <= 75 && page.available() > 0; ++i) {
-      line= page.readLine();
-    }
-
-    String url;
-    String text;
-    Pattern urlPattern= Pattern.compile("(?<=src=\").*?(?=\")"),
-            textPattern= Pattern.compile("(?<=title=\").*?(?=\")");
-    Matcher m;
-    m= urlPattern.matcher(line);
-    
-    if (!m.find()) {
-      for (int i= 0; i < 2; ++i) {
-        line= page.readLine();
-      }
-      m= urlPattern.matcher(line);
-      if (!m.find())
-        return false;
-    }
-
-    url= Html.fromHtml(m.group()).toString();
-    m= textPattern.matcher(line);
-    if (m.find()) {
-      text= Html.fromHtml(Html.fromHtml(m.group()).toString()).toString();
-      return updateComic(number, text, url);
-    } else
-      return false;
+  public boolean updateComic(int number) throws IOException {
+    Pair<String, String> info= ComicScraper.getComicInformation(number);
+    String url= info.first;
+    String text= info.second;
+    return updateComic(number, text, url);
   }
   
   /**
@@ -390,7 +381,7 @@ public class ComicDbAdapter {
    * @param number number of the comic to reference
    * @return true if it is a favorite, false otherwise
    */
-  public boolean isFavorite(long number) {
+  public boolean isFavorite(int number) {
     Cursor cursor= 
       database.query(true, DATABASE_TABLE, ALL_COLUMNS,
                      KEY_NUMBER + "=" + number,
@@ -412,8 +403,8 @@ public class ComicDbAdapter {
    * @throws MalformedURLException if the url is incorrectly formed... this means you screwed up
    * @throws IOException if the connection fails
    */
-  public synchronized void updateList() throws MalformedURLException, IOException {
-    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.ARCHIVE_URL), BUFFER_SIZE);
+  public synchronized void updateList() throws IOException {
+    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.URL_ARCHIVE), BUFFER_SIZE);
     DataInputStream archive= new DataInputStream(bi);
 
     String line;
@@ -423,11 +414,11 @@ public class ComicDbAdapter {
 
     database.beginTransaction();
     Cursor mostRecentCursor= fetchMostRecentComic();
-    long newest= (mostRecentCursor != null) ?
-        mostRecentCursor.getLong(mostRecentCursor.getColumnIndexOrThrow(KEY_NUMBER)) + 1 : 1;
+    int newest= (mostRecentCursor != null) ?
+        mostRecentCursor.getInt(mostRecentCursor.getColumnIndexOrThrow(KEY_NUMBER)) + 1 : 1;
     if (mostRecentCursor != null)
       mostRecentCursor.close();
-    long number= Long.MAX_VALUE;
+    int number= Integer.MAX_VALUE;
     String title;
     Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
             titlePattern= Pattern.compile("(?<=>).*?(?=</a)");
@@ -437,7 +428,7 @@ public class ComicDbAdapter {
       if (line.startsWith("<a")) {
         m= numberPattern.matcher(line);
         if (m.find()) {
-          number= Long.parseLong(m.group());
+          number= Integer.parseInt(m.group());
           m= titlePattern.matcher(line);
           if (m.find()) {
             title= Html.fromHtml(m.group()).toString();
@@ -451,5 +442,25 @@ public class ComicDbAdapter {
     }
     database.setTransactionSuccessful();
     database.endTransaction();
+  }
+
+  private static class DatabaseHelper extends SQLiteOpenHelper {
+
+    DatabaseHelper(Context context) {
+      super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+      db.execSQL(DATABASE_CREATE);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+      Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
+          + newVersion + ", which will destroy all old data");
+      db.execSQL("DROP TABLE IF EXISTS " + DATABASE_TABLE);
+      onCreate(db);
+    }
   }
 }
