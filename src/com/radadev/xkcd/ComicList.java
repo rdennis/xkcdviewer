@@ -110,7 +110,6 @@ public class ComicList extends ListActivity {
   @Override
   protected void onResume() {
     super.onResume();
-    mDbAdapter.open();
     doBindService();
   }
   
@@ -144,8 +143,8 @@ public class ComicList extends ListActivity {
     AdapterContextMenuInfo info= (AdapterContextMenuInfo) menuInfo;
     getMenuInflater().inflate(R.menu.selector_context, menu);
 
-    File file= new File(Comics.getSdDir(this), Long.toString(info.id));
-    if (file.length() > 0) {
+    File file= new File(Comics.getSdDir(this), info.id + ".png");
+    if (file.exists()) {
       menu.findItem(R.id.menu_download).setVisible(false);
     } else {
       menu.findItem(R.id.menu_clear).setVisible(false);
@@ -186,7 +185,7 @@ public class ComicList extends ListActivity {
         return true;
       }
       case R.id.menu_clear: {
-        File file= new File(Comics.getSdDir(this), Integer.toString(comicNumber));
+        File file= new File(Comics.getSdDir(this), comicNumber + ".png");
         if (file.exists()) {
           file.delete();
           Toast.makeText(ComicList.this, "Deleted comic number " + comicNumber, Toast.LENGTH_SHORT).show();
@@ -221,7 +220,7 @@ public class ComicList extends ListActivity {
         Set<String> fileList= new HashSet<String>(Arrays.asList(Comics.getSdDir(this).list()));
         List<Integer> downloadList= new ArrayList<Integer>();
         for (Integer i= max; i > 0; --i) {
-          if (!fileList.contains(i.toString())) {
+          if (i != 404 && !fileList.contains(i + ".png")) {
             downloadList.add(i);
           }
         }
@@ -237,9 +236,9 @@ public class ComicList extends ListActivity {
       }
       case R.id.menu_clearall: {
         Set<String> fileList= new HashSet<String>(Arrays.asList(Comics.getSdDir(this).list()));
-        List<Integer> deleteList= new ArrayList<Integer>();
+        List<String> deleteList= new ArrayList<String>();
         for (String file : fileList) {
-          deleteList.add(Integer.valueOf(file));
+          deleteList.add(file);
         }
         AsyncClear deleter= new AsyncClear(this);
         deleter.setShowProgress(true);
@@ -248,7 +247,7 @@ public class ComicList extends ListActivity {
             requeryCursor();
           }
         });
-        deleter.execute(deleteList.toArray(new Integer[0]));
+        deleter.execute(deleteList.toArray(new String[0]));
         return true;
       }
       case R.id.menu_favorites: {
@@ -369,7 +368,7 @@ public class ComicList extends ListActivity {
         });
         
         ImageView view= (ImageView) ((ViewGroup) v.getParent()).findViewById(R.id.row_arrow);
-        if (new File(Comics.getSdDir(ComicList.this), Integer.toString(id)).length() > 0) {
+        if (new File(Comics.getSdDir(ComicList.this), id + ".png").exists()) {
           view.setImageDrawable(getResources().getDrawable(R.drawable.arrow));
           view.setClickable(false);
         } else if (mDownloadingList.contains(id)) {
