@@ -72,6 +72,7 @@ public final class Comics {
   public static final String[] SQL_ALL_COLUMNS= { SQL_KEY_NUMBER, SQL_KEY_TITLE, SQL_KEY_TEXT, SQL_KEY_IMAGE, SQL_KEY_FAVORITE };
   
   public static final String ACTION_VIEW= "com.radadev.xkcd.View";
+  public static final String ACTION_VIEW_SEARCH= "com.radadev.xkcd.ViewSearch";
   public static final String ACTION_VIEW_FAVORITES= "com.radadev.xkcd.ViewFavorites";
   
   public static final String KEY_LAST_UPDATE= "com.radadev.xkcd.LastUpdate";
