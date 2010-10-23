@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+Copyright (C) 2010  Alex Avance
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
+1307, USA.
+-->
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout1"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:padding="10dp">
+  <CheckBox android:id="@+id/row_star"
+      style="?android:attr/starStyle"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:focusable="false" />
+  <TextView android:id="@+id/space"
+      android:text="@string/space"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:textSize="16sp" /> 
+  <TextView android:id="@+id/row_number"
+      android:text="@+id/rownumber"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:textSize="16sp" />
+  <TextView android:id="@+id/seperator"
+      android:text="@string/seperator"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:textSize="16sp"/>
+  <TextView android:id="@+id/row_title"
+      android:text="@+id/rowtitle"
+      android:layout_width="0px"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:textSize="16sp"
+      android:singleLine="true"
+      android:ellipsize="marquee"/>
+  <ImageView android:id="@+id/row_arrow"
+      android:layout_width="wrap_content"
+      android:layout_height="fill_parent"
+      android:scaleType="center" />
+</LinearLayout>
