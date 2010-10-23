@@ -18,27 +18,31 @@
  */
 package com.radadev.xkcd;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Random;
 
-import org.apache.http.util.ByteArrayBuffer;
-
-import com.radadev.xkcd.database.ComicDbAdapter;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.HttpGet;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Bitmap.CompressFormat;
+import android.net.http.AndroidHttpClient;
+
+import com.radadev.xkcd.database.ComicDbAdapter;
 
 
 public final class Comics {
@@ -80,23 +84,13 @@ public final class Comics {
   public static final int BUFFER_SIZE= 10000;
 
   public static Random RANDOM= new Random(Calendar.getInstance().getTimeInMillis());
-  
-  public static final InputStream download(URL url) throws IOException {
-    HttpURLConnection conn= (HttpURLConnection) url.openConnection();
-    conn.setDoInput(true);
-    return conn.getInputStream();
-  }
-  
-  public static final InputStream download(String url) throws MalformedURLException, IOException {
-    return download(new URL(url));
-  }
 
   public static void downloadComic(Integer comicNumber, Context context) throws FileNotFoundException, IOException {
     ComicDbAdapter dbAdapter= new ComicDbAdapter(context);
     dbAdapter.open();
     try {
       dbAdapter.updateComic(comicNumber);
-      File file= new File(getSdDir(context), comicNumber.toString());
+      File file= new File(getSdDir(context), comicNumber.toString() + ".png");
       if (file.length() <= 0) {
         Cursor cursor= dbAdapter.fetchComic(comicNumber);
         String url= cursor.getString(cursor.getColumnIndexOrThrow(Comics.SQL_KEY_IMAGE));
@@ -109,20 +103,53 @@ public final class Comics {
         }
         cursor.close();
 
-        BufferedInputStream inputStream= new BufferedInputStream(Comics.download(url), Comics.BUFFER_SIZE);
-        ByteArrayBuffer buffer= new ByteArrayBuffer(50);
-        int current;
-        while ((current= inputStream.read()) != -1) {
-          buffer.append(current);
-        }
+        Bitmap bitmap= Comics.downloadBitmap(url);
         FileOutputStream fileStream= new FileOutputStream(file);
-        fileStream.write(buffer.toByteArray());
+        bitmap.compress(CompressFormat.PNG, 100, fileStream);
+        bitmap.recycle();
         fileStream.close();
       }
     } finally {
       dbAdapter.close();
     }
   }
+
+  public static final Bitmap downloadBitmap(String url) {
+
+    final AndroidHttpClient client= AndroidHttpClient.newInstance("Android");
+    final HttpGet getRequest= new HttpGet(url);
+
+    try {
+      HttpResponse response= client.execute(getRequest);
+      final int statusCode= response.getStatusLine().getStatusCode();
+      if (statusCode != HttpStatus.SC_OK) {
+        return null;
+      }
+
+      final HttpEntity entity= response.getEntity();
+      if (entity != null) {
+        InputStream inputStream= null;
+        try {
+          inputStream= new FlushedInputStream(entity.getContent());
+          final Bitmap bitmap= BitmapFactory.decodeStream(inputStream);
+          return bitmap;
+        } finally {
+          if (inputStream != null) {
+            inputStream.close();
+          }
+          entity.consumeContent();
+        }
+      }
+    } catch (Exception e) {
+      getRequest.abort();
+    } finally {
+      if (client != null) {
+        client.close();
+      }
+    }
+    return null;
+  }
+
   public static final Date getLastUpdate(Context context) {
     SharedPreferences info= context.getSharedPreferences("info", Context.MODE_WORLD_WRITEABLE);
     String dateString= info.getString(KEY_LAST_UPDATE, null);
@@ -140,5 +167,30 @@ public final class Comics {
     File result= new File(path);
     result.mkdirs();
     return result;
+  }
+
+  static class FlushedInputStream extends FilterInputStream {
+
+    public FlushedInputStream(InputStream inputStream) {
+      super(inputStream);
+    }
+
+    @Override
+    public long skip(long n) throws IOException {
+      long totalBytesSkipped= 0L;
+      while (totalBytesSkipped < n) {
+        long bytesSkipped= in.skip(n - totalBytesSkipped);
+        if (bytesSkipped == 0L) {
+          int b= read();
+          if (b < 0) {
+            break; // we reached EOF
+          } else {
+            bytesSkipped= 1; // we read one byte
+          }
+        }
+        totalBytesSkipped+= bytesSkipped;
+      }
+      return totalBytesSkipped;
+    }
   }
 }

@@ -262,8 +262,7 @@ public final class ComicAsync {
     boolean mShowProgress= false;
     boolean mShowNotification= false;
 
-    private static final int THREAD_COUNT= 25;
-    private static final int MAX_ATTEMPTS= 5;
+    private static final int THREAD_COUNT= 10;
     
     public AsyncDownloadAll(Context context) {
       super(context);
@@ -309,13 +308,11 @@ public final class ComicAsync {
           @SuppressWarnings("unchecked")
           public Boolean call() {
             boolean success= false;
-            for (int i= 0; i < MAX_ATTEMPTS && !success; ++i) {
-              try {
-                Comics.downloadComic(number, mContext);
-                success= true;
-              } catch (IOException e) {
-                success= false;
-              }
+            try {
+              Comics.downloadComic(number, mContext);
+              success= true;
+            } catch (IOException e) {
+              success= false;
             }
             publishProgress(new Pair(number, success));
             return success;
@@ -363,14 +360,14 @@ public final class ComicAsync {
     }
   }
   
-  public static class AsyncClear extends ComicAsyncTask<Integer, Integer, Void> {
+  public static class AsyncClear extends ComicAsyncTask<String, Integer, Void> {
 
     ProgressDialog mDialog;
     ExecutorService mExecutor;
     
     boolean mShowProgress= false;
     
-    private static final int THREAD_COUNT= 25;
+    private static final int THREAD_COUNT= 10;
     
     public AsyncClear(Context context) {
       super(context);
@@ -401,16 +398,16 @@ public final class ComicAsync {
     }
 
     @Override
-    protected Void doInBackground(Integer... params) {
+    protected Void doInBackground(String... params) {
       mDialog.setMax(params.length);
       mExecutor= Executors.newFixedThreadPool(THREAD_COUNT);
       List<Callable<Boolean>> callables= new ArrayList<Callable<Boolean>>();
-      for (final Integer number : params) {
+      for (final String param : params) {
         callables.add(new Callable<Boolean>() {
           public Boolean call() {
             boolean result;
             try {
-              File file= new File(Comics.getSdDir(mContext), number.toString());
+              File file= new File(Comics.getSdDir(mContext), param);
               if (file.exists()) {
                 file.delete();
               }

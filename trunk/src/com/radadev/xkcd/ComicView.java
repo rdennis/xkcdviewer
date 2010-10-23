@@ -18,7 +18,6 @@
  */
 package com.radadev.xkcd;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -265,7 +264,7 @@ public class ComicView extends Activity {
     cursor.close();
     setTitle(newTitle);
 
-    File file= new File(Comics.getSdDir(this), mComicNumber.toString());
+    File file= new File(Comics.getSdDir(this), mComicNumber + ".png");
     if (file.length() == 0) {
       AsyncDownload downloader= new AsyncDownload(this);
       downloader.setShowProgress(true);
@@ -282,11 +281,13 @@ public class ComicView extends Activity {
       downloader.execute(mComicNumber);
     } else {
       try {
-        FileInputStream istream= new FileInputStream(file);
-        BufferedInputStream bi= new BufferedInputStream(istream, Comics.BUFFER_SIZE);
-        BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(bi));
-        bi.close();
-        istream.close();
+        FileInputStream input= new FileInputStream(file);
+        BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(input));
+        input.close();
+        BitmapDrawable d= (BitmapDrawable) mComicImage.getDrawable();
+        if (d != null) {
+          d.getBitmap().recycle();
+        }
         mComicImage.setImageDrawable(drawable);
         mComicImage.setScaleType(ScaleType.FIT_START);
         mComicImage.setOnTouchListener(new ImageViewTouchListener());

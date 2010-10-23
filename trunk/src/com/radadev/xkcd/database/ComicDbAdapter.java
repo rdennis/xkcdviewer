@@ -18,8 +18,6 @@
  */
 package com.radadev.xkcd.database;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -27,7 +25,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import android.content.ContentValues;
@@ -36,7 +33,6 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.text.Html;
 import android.util.Log;
 import android.util.Pair;
 
@@ -44,8 +40,6 @@ import com.radadev.xkcd.Comics;
 import com.radadev.xkcd.scraper.ComicScraper;
 
 public class ComicDbAdapter {
-
-  private static final int BUFFER_SIZE= 10000;
 
   private static final String KEY_NUMBER= Comics.SQL_KEY_NUMBER;
   private static final String KEY_TITLE= Comics.SQL_KEY_TITLE;
@@ -284,23 +278,27 @@ public class ComicDbAdapter {
    * @throws SQLException if the comic could not be found
    */
   public Cursor fetchMostRecentComic() {
+    Cursor cursor= null;
     try {
       String[] columnList= ALL_COLUMNS.clone();
       columnList[0]= KEY_MAXNUMBER;
       
-      Cursor cursor=
+      cursor=
         database.query(true, DATABASE_TABLE, columnList,
                   null, null, null, null, null, null);
       if (cursor != null) {
         cursor.moveToFirst();
       }
       int number= cursor.getInt(cursor.getColumnIndexOrThrow(KEY_MAXNUMBER));
-      cursor.close();
   
       // odd, I know, this is used to normalize the column names
       return (number > 0) ? fetchComic(number) : null;
     } catch (SQLException e) {
       throw e;
+    } finally {
+      if (cursor != null) {
+        cursor.close();
+      }
     }
   }
   
@@ -382,66 +380,22 @@ public class ComicDbAdapter {
    * @return true if it is a favorite, false otherwise
    */
   public boolean isFavorite(int number) {
-    Cursor cursor= 
-      database.query(true, DATABASE_TABLE, ALL_COLUMNS,
-                     KEY_NUMBER + "=" + number,
-                     null, null, null, null, null);
-    if (cursor != null) {
-      cursor.moveToFirst();
-      int columnIndex= cursor.getColumnIndexOrThrow(KEY_FAVORITE);
-      boolean result= cursor.getInt(columnIndex) != 0;
-      cursor.close();
-      return result;
-    }
-    return false;
-  }
-  
-  /**
-   * Updates the list by retrieving the comic list from the server
-   * and adding necessary information.
-   * 
-   * @throws MalformedURLException if the url is incorrectly formed... this means you screwed up
-   * @throws IOException if the connection fails
-   */
-  public synchronized void updateList() throws IOException {
-    BufferedInputStream bi= new BufferedInputStream(Comics.download(Comics.URL_ARCHIVE), BUFFER_SIZE);
-    DataInputStream archive= new DataInputStream(bi);
-
-    String line;
-    for (int i= 0; i <= 68 && archive.available() > 0; ++i) {
-      line= archive.readLine();
-    }
-
-    database.beginTransaction();
-    Cursor mostRecentCursor= fetchMostRecentComic();
-    int newest= (mostRecentCursor != null) ?
-        mostRecentCursor.getInt(mostRecentCursor.getColumnIndexOrThrow(KEY_NUMBER)) + 1 : 1;
-    if (mostRecentCursor != null)
-      mostRecentCursor.close();
-    int number= Integer.MAX_VALUE;
-    String title;
-    Pattern numberPattern= Pattern.compile("(?<=href=\"/).*?(?=/\")"),
-            titlePattern= Pattern.compile("(?<=>).*?(?=</a)");
-    Matcher m;
-    while (number > newest && archive.available() > 0) {
-      line= archive.readLine();
-      if (line.startsWith("<a")) {
-        m= numberPattern.matcher(line);
-        if (m.find()) {
-          number= Integer.parseInt(m.group());
-          m= titlePattern.matcher(line);
-          if (m.find()) {
-            title= Html.fromHtml(m.group()).toString();
-            insertComic(number, title);
-            updateComic(number);
-            for (int i= 0; i < 3; ++i)
-              archive.readLine();
-          }
-        }
+    Cursor cursor= null;
+    try {
+      cursor= 
+        database.query(true, DATABASE_TABLE, ALL_COLUMNS,
+            KEY_NUMBER + "=" + number,
+            null, null, null, null, null);
+      if (cursor != null) {
+        cursor.moveToFirst();
+        int columnIndex= cursor.getColumnIndexOrThrow(KEY_FAVORITE);
+        boolean result= cursor.getInt(columnIndex) != 0;
+        return result;
       }
+      return false;
+    } finally {
+      cursor.close();
     }
-    database.setTransactionSuccessful();
-    database.endTransaction();
   }
 
   private static class DatabaseHelper extends SQLiteOpenHelper {
