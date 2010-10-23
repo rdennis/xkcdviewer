@@ -1,4 +1,4 @@
-package com.radadev.xkcd;
+package com.radadev.xkcd.compat;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,8 +19,8 @@ import android.os.AsyncTask;
 import android.util.Pair;
 import android.widget.Toast;
 
-import com.radadev.xkcd.database.ComicDbAdapter;
-import com.radadev.xkcd.scraper.ArchiveScraper;
+import com.radadev.xkcd.compat.database.ComicDbAdapter;
+import com.radadev.xkcd.compat.scraper.ArchiveScraper;
 
 public final class ComicAsync {
   
@@ -262,7 +262,7 @@ public final class ComicAsync {
     boolean mShowProgress= false;
     boolean mShowNotification= false;
 
-    private static final int THREAD_COUNT= 25;
+    private static final int THREAD_COUNT= 10;
     private static final int MAX_ATTEMPTS= 5;
     
     public AsyncDownloadAll(Context context) {
@@ -370,7 +370,7 @@ public final class ComicAsync {
     
     boolean mShowProgress= false;
     
-    private static final int THREAD_COUNT= 25;
+    private static final int THREAD_COUNT= 10;
     
     public AsyncClear(Context context) {
       super(context);

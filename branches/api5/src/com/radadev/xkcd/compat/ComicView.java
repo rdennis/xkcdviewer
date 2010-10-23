@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.radadev.xkcd;
+package com.radadev.xkcd.compat;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -50,8 +50,8 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
 
-import com.radadev.xkcd.ComicAsync.AsyncDownload;
-import com.radadev.xkcd.database.ComicDbAdapter;
+import com.radadev.xkcd.compat.ComicAsync.AsyncDownload;
+import com.radadev.xkcd.compat.database.ComicDbAdapter;
 
 public class ComicView extends Activity {
   
@@ -287,6 +287,10 @@ public class ComicView extends Activity {
         BitmapDrawable drawable= new BitmapDrawable(BitmapFactory.decodeStream(bi));
         bi.close();
         istream.close();
+        BitmapDrawable d= (BitmapDrawable) mComicImage.getDrawable();
+        if (d != null) {
+          d.getBitmap().recycle();
+        }
         mComicImage.setImageDrawable(drawable);
         mComicImage.setScaleType(ScaleType.FIT_START);
         mComicImage.setOnTouchListener(new ImageViewTouchListener());

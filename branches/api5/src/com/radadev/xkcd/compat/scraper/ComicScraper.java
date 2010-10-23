@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.radadev.xkcd.scraper;
+package com.radadev.xkcd.compat.scraper;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -31,7 +31,7 @@ import org.htmlcleaner.XPatherException;
 import android.text.Html;
 import android.util.Pair;
 
-import com.radadev.xkcd.Comics;
+import com.radadev.xkcd.compat.Comics;
 
 public final class ComicScraper {
 
