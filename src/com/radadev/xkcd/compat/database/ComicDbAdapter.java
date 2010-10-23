@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.radadev.xkcd.database;
+package com.radadev.xkcd.compat.database;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -40,8 +40,8 @@ import android.text.Html;
 import android.util.Log;
 import android.util.Pair;
 
-import com.radadev.xkcd.Comics;
-import com.radadev.xkcd.scraper.ComicScraper;
+import com.radadev.xkcd.compat.Comics;
+import com.radadev.xkcd.compat.scraper.ComicScraper;
 
 public class ComicDbAdapter {
 

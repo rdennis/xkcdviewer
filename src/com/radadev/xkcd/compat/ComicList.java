@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
  * 1307, USA.
  */
-package com.radadev.xkcd;
+package com.radadev.xkcd.compat;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -53,11 +53,11 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 
-import com.radadev.xkcd.ComicAsync.AsyncClear;
-import com.radadev.xkcd.ComicAsync.AsyncDownload;
-import com.radadev.xkcd.ComicAsync.AsyncDownloadAll;
-import com.radadev.xkcd.ComicAsync.AsyncUpdate;
-import com.radadev.xkcd.database.ComicDbAdapter;
+import com.radadev.xkcd.compat.ComicAsync.AsyncClear;
+import com.radadev.xkcd.compat.ComicAsync.AsyncDownload;
+import com.radadev.xkcd.compat.ComicAsync.AsyncDownloadAll;
+import com.radadev.xkcd.compat.ComicAsync.AsyncUpdate;
+import com.radadev.xkcd.compat.database.ComicDbAdapter;
 
 public class ComicList extends ListActivity {
 
