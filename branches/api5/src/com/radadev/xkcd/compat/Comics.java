@@ -33,16 +33,15 @@ import java.util.Random;
 
 import org.apache.http.util.ByteArrayBuffer;
 
-import com.radadev.xkcd.compat.database.ComicDbAdapter;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
 
+import com.radadev.xkcd.compat.database.ComicDbAdapter;
 
 public final class Comics {
-  
+
   // 10000 is an arbitrary number just so it isn't 0
   private static final int MSG_BASE= 10000;
   

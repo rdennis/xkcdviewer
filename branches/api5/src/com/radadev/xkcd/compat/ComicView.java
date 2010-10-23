@@ -30,7 +30,6 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.DialogInterface.OnCancelListener;
 import android.database.Cursor;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
@@ -40,8 +39,6 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
-import android.view.View.OnFocusChangeListener;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -110,7 +107,7 @@ public class ComicView extends Activity {
       }
     });
     
-    mComicText.setOnFocusChangeListener(new OnFocusChangeListener() {
+    mComicText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
       public void onFocusChange(View v, boolean hasFocus) {
         EditText view= (EditText) v;
         
@@ -132,7 +129,7 @@ public class ComicView extends Activity {
       }      
     });
     
-    mGoButton.setOnClickListener(new OnClickListener() {
+    mGoButton.setOnClickListener(new View.OnClickListener() {
       
       public void onClick(View view) {
         String text= mComicText.getText().toString();
@@ -145,7 +142,7 @@ public class ComicView extends Activity {
       }
     });
     
-    mNextButton.setOnClickListener(new OnClickListener() {
+    mNextButton.setOnClickListener(new View.OnClickListener() {
       public void onClick(View view) {
         if (mComicNumber.equals(mMaxNumber))
           mComicNumber= 1;
@@ -156,7 +153,7 @@ public class ComicView extends Activity {
       }
     });
 
-    mPrevButton.setOnClickListener(new OnClickListener() {
+    mPrevButton.setOnClickListener(new View.OnClickListener() {
       public void onClick(View view) {
         if (mComicNumber.equals(1))
           mComicNumber= mMaxNumber;
@@ -238,7 +235,7 @@ public class ComicView extends Activity {
             removeDialog(HOVERTEXT_DIALOGID);
           }
         });
-        builder.setOnCancelListener(new OnCancelListener() {
+        builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
           public void onCancel(DialogInterface dialog) {
             removeDialog(HOVERTEXT_DIALOGID);
           }
@@ -294,7 +291,7 @@ public class ComicView extends Activity {
         mComicImage.setImageDrawable(drawable);
         mComicImage.setScaleType(ScaleType.FIT_START);
         mComicImage.setOnTouchListener(new ImageViewTouchListener());
-        mComicImage.setOnClickListener(new OnClickListener() {
+        mComicImage.setOnClickListener(new View.OnClickListener() {
           public void onClick(View v) {
             showDialog(HOVERTEXT_DIALOGID);
           }

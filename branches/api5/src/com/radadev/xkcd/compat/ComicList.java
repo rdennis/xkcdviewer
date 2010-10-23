@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 import android.app.ListActivity;
+import android.app.SearchManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -66,6 +67,12 @@ public class ComicList extends ListActivity {
   
   private final Messenger mMessenger = new Messenger(new IncomingHandler());
 
+  private static final int NORMAL_VIEW= 10000;
+  private static final int SEARCH_VIEW= 10001;
+  private static final int FAVORITE_VIEW= 10002;
+  
+  private int mCurrentView;
+
   private ComicDbAdapter mDbAdapter;
   
   private Set<Integer> mDownloadingList= new HashSet<Integer>();
@@ -89,28 +96,43 @@ public class ComicList extends ListActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.comic_list);
     
+    Intent intent= getIntent();
+    if (intent == null) {
+      mCurrentView= NORMAL_VIEW;
+      setDefaultKeyMode(DEFAULT_KEYS_SEARCH_LOCAL);
+    } else if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
+      mCurrentView= SEARCH_VIEW;
+      setTitle("Search results");
+    } else if (Comics.ACTION_VIEW_FAVORITES.equals(intent.getAction())) {
+      mCurrentView= FAVORITE_VIEW;
+      setTitle("Favorites");
+    } else {
+      mCurrentView= NORMAL_VIEW;
+    }
+    
     mDbAdapter= new ComicDbAdapter(getApplicationContext());
     mDbAdapter.open();
     
     startService(new Intent(this, ComicService.class));
+    
+    if (mCurrentView == NORMAL_VIEW) {
+      AsyncUpdate updater= new AsyncUpdate(this);
+      updater.setShowProgress(true);
+      updater.setFinishedCallBack(new Runnable() {
+        public void run() {
+          requeryCursor();
+        }
+      });
+      updater.execute();
+    }
 
     populateList();
     registerForContextMenu(getListView());
-    
-    AsyncUpdate updater= new AsyncUpdate(this);
-    updater.setShowProgress(true);
-    updater.setFinishedCallBack(new Runnable() {
-      public void run() {
-        requeryCursor();
-      }
-    });
-    updater.execute();
   }
   
   @Override
   protected void onResume() {
     super.onResume();
-    mDbAdapter.open();
     doBindService();
   }
   
@@ -130,9 +152,10 @@ public class ComicList extends ListActivity {
   public boolean onCreateOptionsMenu(Menu menu) {
     super.onCreateOptionsMenu(menu);
     getMenuInflater().inflate(R.menu.selector_menu, menu);
-    
-    menu.findItem(R.id.menu_favorites).setVisible(false);
-    menu.findItem(R.id.menu_search).setVisible(false);
+
+    if (mCurrentView == FAVORITE_VIEW) {
+      menu.findItem(R.id.menu_favorites).setVisible(false);
+    }
     
     return true;
   }
@@ -144,8 +167,8 @@ public class ComicList extends ListActivity {
     AdapterContextMenuInfo info= (AdapterContextMenuInfo) menuInfo;
     getMenuInflater().inflate(R.menu.selector_context, menu);
 
-    File file= new File(Comics.getSdDir(this), Long.toString(info.id));
-    if (file.length() > 0) {
+    File file= new File(Comics.getSdDir(this), info.id + ".png");
+    if (file.exists()) {
       menu.findItem(R.id.menu_download).setVisible(false);
     } else {
       menu.findItem(R.id.menu_clear).setVisible(false);
@@ -186,7 +209,7 @@ public class ComicList extends ListActivity {
         return true;
       }
       case R.id.menu_clear: {
-        File file= new File(Comics.getSdDir(this), Integer.toString(comicNumber));
+        File file= new File(Comics.getSdDir(this), comicNumber + ".png");
         if (file.exists()) {
           file.delete();
           Toast.makeText(ComicList.this, "Deleted comic number " + comicNumber, Toast.LENGTH_SHORT).show();
@@ -221,7 +244,7 @@ public class ComicList extends ListActivity {
         Set<String> fileList= new HashSet<String>(Arrays.asList(Comics.getSdDir(this).list()));
         List<Integer> downloadList= new ArrayList<Integer>();
         for (Integer i= max; i > 0; --i) {
-          if (!fileList.contains(i.toString())) {
+          if (i != 404 && !fileList.contains(i + ".png")) {
             downloadList.add(i);
           }
         }
@@ -333,8 +356,21 @@ public class ComicList extends ListActivity {
   }
 
   protected void populateList() {
-    // TODO this should repopulate the list adapter
-    final Cursor listCursor= mDbAdapter.fetchAllComics();
+    Cursor listCursor;
+    switch (mCurrentView) {
+    case FAVORITE_VIEW: {
+      listCursor= mDbAdapter.fetchFavoriteComics();
+    } break;
+    case SEARCH_VIEW: {
+      String query= getIntent().getStringExtra(SearchManager.QUERY);
+      listCursor= mDbAdapter.fetchSearchedComics(query);
+    } break;
+    case NORMAL_VIEW:
+    default: {
+      listCursor= mDbAdapter.fetchAllComics();
+    } break;
+    }
+    
     startManagingCursor(listCursor);
 
     String[] from= new String[] { Comics.SQL_KEY_FAVORITE, Comics.SQL_KEY_NUMBER, Comics.SQL_KEY_TITLE };
@@ -369,7 +405,7 @@ public class ComicList extends ListActivity {
         });
         
         ImageView view= (ImageView) ((ViewGroup) v.getParent()).findViewById(R.id.row_arrow);
-        if (new File(Comics.getSdDir(ComicList.this), Integer.toString(id)).length() > 0) {
+        if (new File(Comics.getSdDir(ComicList.this), id + ".png").exists()) {
           view.setImageDrawable(getResources().getDrawable(R.drawable.arrow));
           view.setClickable(false);
         } else if (mDownloadingList.contains(id)) {
