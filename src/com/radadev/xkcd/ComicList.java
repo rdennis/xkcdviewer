@@ -26,10 +26,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.app.SearchManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
@@ -248,30 +250,48 @@ public class ComicList extends ListActivity {
             downloadList.add(i);
           }
         }
-        AsyncDownloadAll downloader= new AsyncDownloadAll(this);
-        downloader.setShowProgress(true);
-        downloader.setFinishedCallBack(new Runnable() {
-          public void run() {
-            requeryCursor();
-          }
-        });
-        downloader.execute(downloadList.toArray(new Integer[0]));
+        if (downloadList.size() > 0) {
+          AsyncDownloadAll downloader= new AsyncDownloadAll(this);
+          downloader.setShowProgress(true);
+          downloader.setFinishedCallBack(new Runnable() {
+            public void run() {
+              requeryCursor();
+            }
+          });
+          downloader.execute(downloadList.toArray(new Integer[0]));
+        } else {
+          Toast.makeText(this, "No comics to download", Toast.LENGTH_SHORT).show();
+        }
         return true;
       }
       case R.id.menu_clearall: {
         Set<String> fileList= new HashSet<String>(Arrays.asList(Comics.getSdDir(this).list()));
-        List<String> deleteList= new ArrayList<String>();
+        final List<String> deleteList= new ArrayList<String>();
         for (String file : fileList) {
           deleteList.add(file);
         }
-        AsyncClear deleter= new AsyncClear(this);
-        deleter.setShowProgress(true);
-        deleter.setFinishedCallBack(new Runnable() {
-          public void run() {
-            requeryCursor();
-          }
-        });
-        deleter.execute(deleteList.toArray(new String[0]));
+        if (deleteList.size() > 0) {
+          AlertDialog.Builder builder= new AlertDialog.Builder(this);
+          builder.setTitle("Warning");
+          builder.setIcon(android.R.drawable.ic_dialog_alert);
+          builder.setMessage("This will delete all comics saved to the sd card.");
+          builder.setPositiveButton("Continue", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+              AsyncClear deleter= new AsyncClear(ComicList.this);
+              deleter.setShowProgress(true);
+              deleter.setFinishedCallBack(new Runnable() {
+                public void run() {
+                  requeryCursor();
+                }
+              });
+              deleter.execute(deleteList.toArray(new String[0]));
+            }
+          });
+          builder.setNegativeButton("Cancel", null);
+          builder.show();
+        } else {
+          Toast.makeText(this, "No comics to delete", Toast.LENGTH_SHORT).show();
+        }
         return true;
       }
       case R.id.menu_favorites: {
@@ -305,8 +325,6 @@ public class ComicList extends ListActivity {
       case R.id.menu_search: {
         onSearchRequested();
       }
-//      case R.id.menu_settings: {
-//      }
       default: {
         return super.onMenuItemSelected(featureId, item);
       }
