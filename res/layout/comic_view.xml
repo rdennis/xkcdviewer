@@ -22,21 +22,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:baselineAligned="false">
   
   <FrameLayout android:id="@+id/image_frame"
       android:layout_width="fill_parent"
-      android:layout_height="fill_parent"
+      android:layout_height="0dip"
       android:layout_weight="1"
       android:background="@android:color/white"
       android:isScrollContainer="true">
     <ImageView android:id="@+id/image_comic"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:layout_weight="1"
         android:background="@android:color/white"
         android:focusable="true"
-        android:focusableInTouchMode="true" />
+        android:focusableInTouchMode="true" 
+        android:contentDescription="@string/desc_image"/>
   </FrameLayout>
 
   <LinearLayout android:id="@+id/controllayout"
@@ -46,7 +47,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     <LinearLayout android:id="@+id/left_spacer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
         android:gravity="center_vertical">
       <CheckBox android:id="@+id/star"
           style="?android:attr/starStyle"
@@ -62,7 +62,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
         android:layout_width="60sp"
         android:layout_height="wrap_content"
         android:inputType="number"
-        android:maxLength="3" />
+        android:maxLength="4" />
     <Button android:id="@+id/button_go"
         android:text="@string/button_go"
         android:layout_width="wrap_content"
@@ -73,9 +73,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
         android:layout_height="wrap_content" />
 
     <LinearLayout android:id="@+id/right_spacer"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="1" />
+        android:layout_width="0dip"
+        android:layout_height="wrap_content" />
   </LinearLayout>
 
 </LinearLayout>
