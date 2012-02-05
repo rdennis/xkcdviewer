@@ -54,4 +54,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-
     <string name="button_next">&#160;&gt;&#160;</string>
     <string name="button_prev">&#160;&lt;&#160;</string>
     <string name="button_go">Go</string>
+    
+    <string name="desc_image">Comic Image</string>
 </resources>
